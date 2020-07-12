@@ -1,6 +1,9 @@
 [submodule "cc65"]
 	path = cc65
-	url = ./cc65
+	url = git@github.com:cc65/cc65.git
 [submodule "neslib"]
 	path = neslib
 	url = git@github.com:sehugg/neslib.git
+[submodule "sdcc-m6502"]
+	path = sdcc
+	url = https://github.com/sehugg/sdcc-m6502
