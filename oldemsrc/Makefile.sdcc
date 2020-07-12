@@ -1,0 +1,14 @@
+
+CC=emcc
+FILE_PACKAGER=python $(EMSDK)/upstream/emscripten/tools/file_packager.py 
+
+all: filesystems
+
+filesystems: $(OUTDIR)/fssdcc.js
+
+$(OUTDIR)/fssdcc.js:
+	ln -sf ./sdcc/device/include include
+	ln -sf ./sdcc/device/lib/build lib
+	$(FILE_PACKAGER) $(OUTDIR)/fssdcc.data \
+		--preload include lib \
+		--separate-metadata --js-output=$@

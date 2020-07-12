@@ -1,0 +1,6 @@
+
+fsinform.js:
+	python $(EMSDK)/upstream/emscripten/tools/file_packager.py fsinform.data \
+		--preload include lib \
+		--separate-metadata \
+		--js-output=$@

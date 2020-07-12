@@ -1,0 +1,12 @@
+#CC = gcc
+GIT = git
+LDFLAGS = --memory-init-file 0 -lworkerfs.js \
+                -s ASM_JS=1 \
+                -s MODULARIZE=1 \
+                -s EXPORT_NAME=\"'inform'\" \
+                -s 'EXTRA_EXPORTED_RUNTIME_METHODS=["FS","callMain"]' \
+                -s FORCE_FILESYSTEM=1
+
+#OPTS = -g -Wall -Wextra
+OPTS = -Os
+

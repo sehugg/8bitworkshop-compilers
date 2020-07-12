@@ -1,0 +1,4 @@
+make clean && ./configure && make genperf re2c genmacro genversion genstring genmodule && emconfigure ./configure && emmake make
+
+CFLAGS = -g -O2 -s MODULARIZE=1 -s EXPORT_NAME=\"'yasm'\"   -s 'EXTRA_EXPORTED_RUNTIME_METHODS=["FS","callMain"]' -s FORCE_FILESYSTEM=1
+
