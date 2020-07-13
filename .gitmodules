@@ -10,3 +10,6 @@
 [submodule "6809tools"]
 	path = 6809tools
 	url = https://github.com/sehugg/6809tools
+[submodule "yasm"]
+	path = yasm
+	url = https://github.com/yasm/yasm

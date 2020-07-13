@@ -7,9 +7,9 @@ WASMDIR=$(OUTPUTDIR)/wasm
 
 FILE_PACKAGER=python $(EMSDK)/upstream/emscripten/tools/file_packager.py
 
-.PHONY: clean clobber prepare cc65 sdcc
+.PHONY: clean clobber prepare cc65 sdcc 6809tools yasm
 
-all: cc65 sdcc
+all: cc65 sdcc 6809tools yasm
 
 prepare:
 	mkdir -p $(OUTDIR) $(BUILDDIR) $(OUTPUTDIR) $(FSDIR) $(WASMDIR)
@@ -23,7 +23,7 @@ clobber: clean
 	cd cc65 && make clean
 	cd sdcc/sdcc && git clean -f
 
-copy.%:
+copy.%: prepare
 	echo "Copying $* to $(BUILDDIR)"
 	mkdir -p $(BUILDDIR)/$*
 	cd $* && git archive HEAD | tar x -C $(BUILDDIR)/$*
@@ -42,7 +42,7 @@ $(FSDIR)/fs%.js: $(BUILDDIR)/%/fsroot
 
 ###
 
-cc65: prepare copy.cc65
+cc65: copy.cc65
 	cd cc65 && make
 	cd $(BUILDDIR)/cc65 && make -f $(MAKEFILESDIR)/Makefile.cc65 binaries OUTDIR=$(WASMDIR)
 	cd cc65 && make -f $(MAKEFILESDIR)/Makefile.cc65 filesystems OUTDIR=$(FSDIR)
@@ -109,13 +109,25 @@ $(BUILDDIR)/sdcc/sdcc/bin/sdcc.js
 	cd 6809tools/lwtools && make
 	cd 6809tools/cmoc && ./configure && make
 
-6809tools.wasm:
+6809tools.wasm: copy.6809tools
 	cd $(BUILDDIR)/6809tools/lwtools && emmake make lwasm EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwasm"
 	cd $(BUILDDIR)/6809tools/lwtools && emmake make lwlink EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwlink"
-	cd $(BUILDDIR)/6809tools/cmoc && emconfigure ./configure EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=cmoc"
+	cd $(BUILDDIR)/6809tools/cmoc && emconfigure ./configure EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0"
 	cd $(BUILDDIR)/6809tools/cmoc/src && emmake make cmoc EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=cmoc"
 
-6809tools: copy.6809tools 6809tools.libs 6809tools.wasm \
+6809tools: 6809tools.libs 6809tools.wasm \
 $(BUILDDIR)/6809tools/lwtools/lwasm/lwasm.js \
 $(BUILDDIR)/6809tools/lwtools/lwlink/lwlink.js \
 $(BUILDDIR)/6809tools/cmoc/src/cmoc.js
+
+###
+
+yasm.libs:
+	cd yasm && sh autogen.sh && ./configure && make
+
+yasm.wasm: copy.yasm
+	cd $(BUILDDIR)/yasm && sh autogen.sh && emconfigure ./configure
+	cd yasm && cp --preserve=mode genperf* gp-* re2c* genmacro* genversion* genstring* genmodule* $(BUILDDIR)/yasm/
+	cd $(BUILDDIR)/yasm && emmake make yasm EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=yasm"
+
+yasm: yasm.libs yasm.wasm $(BUILDDIR)/yasm/yasm.js
