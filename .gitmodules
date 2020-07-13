@@ -7,3 +7,6 @@
 [submodule "sdcc-m6502"]
 	path = sdcc
 	url = https://github.com/sehugg/sdcc-m6502
+[submodule "6809tools"]
+	path = 6809tools
+	url = https://github.com/sehugg/6809tools

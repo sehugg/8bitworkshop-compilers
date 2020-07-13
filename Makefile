@@ -35,6 +35,11 @@ $(FSDIR)/fs%.js: $(BUILDDIR)/%/fsroot
 		--separate-metadata \
 		--js-output=$@
 
+%.js: %
+	sed -r 's/(return \w+)[.]ready/\1;\/\/.ready/' < $< > $@
+	cp $@ $(WASMDIR)/
+	cp $*.wasm $(WASMDIR)/
+
 ###
 
 cc65: prepare copy.cc65
@@ -95,4 +100,22 @@ sdcc.fsroot:
 	ln -s $(CURDIR)/sdcc/sdcc/device/include $(BUILDDIR)/sdcc/fsroot/include
 	ln -s $(CURDIR)/sdcc/sdcc/device/lib/build $(BUILDDIR)/sdcc/fsroot/lib
 
-sdcc: prepare copy.sdcc sdcc.build sdcc.fsroot $(FSDIR)/fssdcc.js
+sdcc: prepare copy.sdcc sdcc.build sdcc.fsroot $(FSDIR)/fssdcc.js \
+$(BUILDDIR)/sdcc/sdcc/bin/sdcc.js
+
+###
+
+6809tools.libs:
+	cd 6809tools/lwtools && make
+	cd 6809tools/cmoc && ./configure && make
+
+6809tools.wasm:
+	cd $(BUILDDIR)/6809tools/lwtools && emmake make lwasm EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwasm"
+	cd $(BUILDDIR)/6809tools/lwtools && emmake make lwlink EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwlink"
+	cd $(BUILDDIR)/6809tools/cmoc && emconfigure ./configure EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=cmoc"
+	cd $(BUILDDIR)/6809tools/cmoc/src && emmake make cmoc EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=cmoc"
+
+6809tools: copy.6809tools 6809tools.libs 6809tools.wasm \
+$(BUILDDIR)/6809tools/lwtools/lwasm/lwasm.js \
+$(BUILDDIR)/6809tools/lwtools/lwlink/lwlink.js \
+$(BUILDDIR)/6809tools/cmoc/src/cmoc.js
