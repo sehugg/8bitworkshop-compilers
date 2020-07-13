@@ -6,10 +6,11 @@ FSDIR=$(OUTPUTDIR)/fs
 WASMDIR=$(OUTPUTDIR)/wasm
 
 FILE_PACKAGER=python $(EMSDK)/upstream/emscripten/tools/file_packager.py
+ALLTARGETS=cc65 sdcc 6809tools yasm verilator
 
-.PHONY: clean clobber prepare cc65 sdcc 6809tools yasm
+.PHONY: clean clobber prepare $(ALLTARGETS)
 
-all: cc65 sdcc 6809tools yasm
+all: $(ALLTARGETS)
 
 prepare:
 	mkdir -p $(OUTDIR) $(BUILDDIR) $(OUTPUTDIR) $(FSDIR) $(WASMDIR)
@@ -20,8 +21,7 @@ clean:
 	rm -fr $(OUTPUTDIR)
 
 clobber: clean
-	cd cc65 && make clean
-	cd sdcc/sdcc && git clean -f
+	git submodule foreach --recursive git clean -xfd
 
 copy.%: prepare
 	echo "Copying $* to $(BUILDDIR)"
@@ -112,13 +112,14 @@ $(BUILDDIR)/sdcc/sdcc/bin/sdcc.js
 6809tools.wasm: copy.6809tools
 	cd $(BUILDDIR)/6809tools/lwtools && emmake make lwasm EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwasm"
 	cd $(BUILDDIR)/6809tools/lwtools && emmake make lwlink EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwlink"
-	cd $(BUILDDIR)/6809tools/cmoc && emconfigure ./configure EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0"
+	cd $(BUILDDIR)/6809tools/cmoc && emconfigure ./configure --prefix=/share EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0"
 	cd $(BUILDDIR)/6809tools/cmoc/src && emmake make cmoc EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=cmoc"
 
 6809tools: 6809tools.libs 6809tools.wasm \
 $(BUILDDIR)/6809tools/lwtools/lwasm/lwasm.js \
 $(BUILDDIR)/6809tools/lwtools/lwlink/lwlink.js \
 $(BUILDDIR)/6809tools/cmoc/src/cmoc.js
+#TODO: filesystem
 
 ###
 
@@ -126,8 +127,22 @@ yasm.libs:
 	cd yasm && sh autogen.sh && ./configure && make
 
 yasm.wasm: copy.yasm
-	cd $(BUILDDIR)/yasm && sh autogen.sh && emconfigure ./configure
+	cd $(BUILDDIR)/yasm && sh autogen.sh && emconfigure ./configure --prefix=/share
 	cd yasm && cp --preserve=mode genperf* gp-* re2c* genmacro* genversion* genstring* genmodule* $(BUILDDIR)/yasm/
 	cd $(BUILDDIR)/yasm && emmake make yasm EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=yasm"
 
 yasm: yasm.libs yasm.wasm $(BUILDDIR)/yasm/yasm.js
+
+###
+
+verilator.libs:
+	cd verilator && autoconf && ./configure && make
+
+verilator.wasm: copy.verilator
+	cd $(BUILDDIR)/verilator && autoconf && emconfigure ./configure --prefix=/share
+	cp /usr/include/FlexLexer.h $(BUILDDIR)/verilator/include
+	sed -i 's/-lstdc++/#-lstdc++/g' $(BUILDDIR)/verilator/src/Makefile_obj
+	cd $(BUILDDIR)/verilator/src && emmake make ../bin/verilator_bin EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=verilator_bin -s INITIAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1"
+
+verilator: verilator.libs verilator.wasm $(BUILDDIR)/verilator/bin/verilator_bin.js
+

@@ -13,3 +13,6 @@
 [submodule "yasm"]
 	path = yasm
 	url = https://github.com/yasm/yasm
+[submodule "verilator"]
+	path = verilator
+	url = https://github.com/verilator/verilator
