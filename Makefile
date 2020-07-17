@@ -6,7 +6,7 @@ FSDIR=$(OUTPUTDIR)/fs
 WASMDIR=$(OUTPUTDIR)/wasm
 
 FILE_PACKAGER=python $(EMSDK)/upstream/emscripten/tools/file_packager.py
-ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac
+ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc
 
 .PHONY: clean clobber prepare $(ALLTARGETS)
 
@@ -152,3 +152,15 @@ zmac.wasm: copy.zmac
 	cd $(BUILDDIR)/zmac && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=zmac"
 
 zmac: zmac.wasm $(BUILDDIR)/zmac/zmac.js
+
+###
+
+# requires nasm
+smlrc.libs:
+	cd SmallerC && make
+
+smlrc.wasm: copy.SmallerC
+	sed -i 's/^CC = /#CC =/g' $(BUILDDIR)/SmallerC/common.mk 
+	cd $(BUILDDIR)/SmallerC && emmake make smlrc EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=smlrc"
+
+smlrc: smlrc.libs smlrc.wasm $(BUILDDIR)/SmallerC/smlrc.js

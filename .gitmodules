@@ -20,3 +20,6 @@
 	path = zmac
 	url = git@github.com:sehugg/zmac.git
 
+[submodule "SmallerC"]
+	path = SmallerC
+	url = https://github.com/alexfru/SmallerC
