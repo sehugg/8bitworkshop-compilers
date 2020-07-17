@@ -6,7 +6,7 @@ FSDIR=$(OUTPUTDIR)/fs
 WASMDIR=$(OUTPUTDIR)/wasm
 
 FILE_PACKAGER=python $(EMSDK)/upstream/emscripten/tools/file_packager.py
-ALLTARGETS=cc65 sdcc 6809tools yasm verilator
+ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac
 
 .PHONY: clean clobber prepare $(ALLTARGETS)
 
@@ -146,3 +146,9 @@ verilator.wasm: copy.verilator
 
 verilator: verilator.libs verilator.wasm $(BUILDDIR)/verilator/bin/verilator_bin.js
 
+###
+
+zmac.wasm: copy.zmac
+	cd $(BUILDDIR)/zmac && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=zmac"
+
+zmac: zmac.wasm $(BUILDDIR)/zmac/zmac.js

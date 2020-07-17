@@ -16,3 +16,7 @@
 [submodule "verilator"]
 	path = verilator
 	url = https://github.com/verilator/verilator
+[submodule "zmac"]
+	path = zmac
+	url = git@github.com:sehugg/zmac.git
+
