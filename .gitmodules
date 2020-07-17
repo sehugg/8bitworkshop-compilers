@@ -23,3 +23,6 @@
 [submodule "SmallerC"]
 	path = SmallerC
 	url = https://github.com/alexfru/SmallerC
+[submodule "nesasm"]
+	path = nesasm
+	url = https://github.com/camsaul/nesasm

@@ -164,3 +164,12 @@ smlrc.wasm: copy.SmallerC
 	cd $(BUILDDIR)/SmallerC && emmake make smlrc EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=smlrc"
 
 smlrc: smlrc.libs smlrc.wasm $(BUILDDIR)/SmallerC/smlrc.js
+# TODO: add filesystem
+
+###
+
+nesasm.wasm: copy.nesasm
+	sed -i 's/^CC/#CC/g' $(BUILDDIR)/nesasm/source/Makefile
+	cd $(BUILDDIR)/nesasm/source && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=nesasm"
+
+nesasm: nesasm.wasm $(BUILDDIR)/nesasm/nesasm.js
