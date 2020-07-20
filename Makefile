@@ -6,7 +6,7 @@ FSDIR=$(OUTPUTDIR)/fs
 WASMDIR=$(OUTPUTDIR)/wasm
 
 FILE_PACKAGER=python $(EMSDK)/upstream/emscripten/tools/file_packager.py
-ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc
+ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm
 
 .PHONY: clean clobber prepare $(ALLTARGETS)
 
@@ -40,12 +40,21 @@ $(FSDIR)/fs%.js: $(BUILDDIR)/%/fsroot
 	cp $@ $(WASMDIR)/
 	cp $*.wasm $(WASMDIR)/
 
-###
+EMCC_FLAGS= \
+	--memory-init-file 0 \
+	-s MODULARIZE=1 \
+	-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["FS","callMain"]' \
+	-s FORCE_FILESYSTEM=1 \
+	-lworkerfs.js
+
+### cc65
 
 cc65: copy.cc65
 	cd cc65 && make
 	cd $(BUILDDIR)/cc65 && make -f $(MAKEFILESDIR)/Makefile.cc65 binaries OUTDIR=$(WASMDIR)
 	cd cc65 && make -f $(MAKEFILESDIR)/Makefile.cc65 filesystems OUTDIR=$(FSDIR)
+
+### sdcc
 
 SDCC_CONFIG=\
   --disable-mcs51-port   \
@@ -74,12 +83,6 @@ SDCC_CONFIG=\
 
 SDCC_EMCC_CONFIG=--disable-ucsim --disable-device-lib --disable-packihx --disable-sdcpp --disable-sdcdb --disable-sdbinutils
 
-EMCC_FLAGS= \
-	--memory-init-file 0 \
-	-s MODULARIZE=1 \
-	-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["FS","callMain"]' \
-	-s FORCE_FILESYSTEM=1
-
 SDCC_FLAGS= \
 	-s USE_BOOST_HEADERS=1 \
 	-s ERROR_ON_UNDEFINED_SYMBOLS=0
@@ -103,7 +106,7 @@ sdcc.fsroot:
 sdcc: prepare copy.sdcc sdcc.build sdcc.fsroot $(FSDIR)/fssdcc.js \
 $(BUILDDIR)/sdcc/sdcc/bin/sdcc.js
 
-###
+### 6809tools
 
 6809tools.libs:
 	cd 6809tools/lwtools && make
@@ -119,9 +122,8 @@ $(BUILDDIR)/sdcc/sdcc/bin/sdcc.js
 $(BUILDDIR)/6809tools/lwtools/lwasm/lwasm.js \
 $(BUILDDIR)/6809tools/lwtools/lwlink/lwlink.js \
 $(BUILDDIR)/6809tools/cmoc/src/cmoc.js
-#TODO: filesystem
 
-###
+### yasm
 
 yasm.libs:
 	cd yasm && sh autogen.sh && ./configure && make
@@ -133,7 +135,7 @@ yasm.wasm: copy.yasm
 
 yasm: yasm.libs yasm.wasm $(BUILDDIR)/yasm/yasm.js
 
-###
+### verilator
 
 verilator.libs:
 	cd verilator && autoconf && ./configure && make
@@ -146,14 +148,14 @@ verilator.wasm: copy.verilator
 
 verilator: verilator.libs verilator.wasm $(BUILDDIR)/verilator/bin/verilator_bin.js
 
-###
+### zmac
 
 zmac.wasm: copy.zmac
 	cd $(BUILDDIR)/zmac && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=zmac"
 
 zmac: zmac.wasm $(BUILDDIR)/zmac/zmac.js
 
-###
+### smlrc
 
 # requires nasm
 smlrc.libs:
@@ -163,10 +165,16 @@ smlrc.wasm: copy.SmallerC
 	sed -i 's/^CC = /#CC =/g' $(BUILDDIR)/SmallerC/common.mk 
 	cd $(BUILDDIR)/SmallerC && emmake make smlrc EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=smlrc"
 
-smlrc: smlrc.libs smlrc.wasm $(BUILDDIR)/SmallerC/smlrc.js
-# TODO: add filesystem
+smlrc.fsroot:
+	rm -fr $(BUILDDIR)/smlrc/fsroot
+	mkdir -p $(BUILDDIR)/smlrc/fsroot
+	ln -s $(CURDIR)/SmallerC/v0100/include $(BUILDDIR)/smlrc/fsroot/include
+	ln -s $(CURDIR)/SmallerC/v0100/lib $(BUILDDIR)/smlrc/fsroot/lib
+	rm -f $(BUILDDIR)/smlrc/fsroot/lib/lc?.a # remove non-DOS libs
 
-###
+smlrc: smlrc.libs smlrc.wasm $(BUILDDIR)/SmallerC/smlrc.js smlrc.fsroot $(FSDIR)/fssmlrc.js
+
+### nesasm
 
 nesasm.wasm: copy.nesasm
 	sed -i 's/^CC/#CC/g' $(BUILDDIR)/nesasm/source/Makefile

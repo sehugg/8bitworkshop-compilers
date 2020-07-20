@@ -4,10 +4,9 @@ compiler tools, compiled with [Emscripten](https://emscripten.org/).
 
 Install Emscripten SDK: https://emscripten.org/docs/getting_started/downloads.html
 
-Install Boost
+Install Boost, nasm
 
 Type "make"
 
 Output files in `output/`
 
-TODO: change "return module.ready" to "return module"
