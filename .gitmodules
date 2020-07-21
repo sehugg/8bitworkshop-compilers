@@ -26,3 +26,6 @@
 [submodule "nesasm"]
 	path = nesasm
 	url = https://github.com/camsaul/nesasm
+[submodule "merlin32"]
+	path = merlin32
+	url = ./merlin32

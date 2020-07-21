@@ -6,7 +6,7 @@ FSDIR=$(OUTPUTDIR)/fs
 WASMDIR=$(OUTPUTDIR)/wasm
 
 FILE_PACKAGER=python $(EMSDK)/upstream/emscripten/tools/file_packager.py
-ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm
+ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32
 
 .PHONY: clean clobber prepare $(ALLTARGETS)
 
@@ -181,3 +181,11 @@ nesasm.wasm: copy.nesasm
 	cd $(BUILDDIR)/nesasm/source && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=nesasm"
 
 nesasm: nesasm.wasm $(BUILDDIR)/nesasm/nesasm.js
+
+### merlin32
+
+merlin32.wasm: copy.merlin32
+	#sed -i 's/^CC/#CC/g' $(BUILDDIR)/merlin32/Source/Makefile
+	cd $(BUILDDIR)/merlin32/Source && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=merlin32"
+
+merlin32: merlin32.wasm $(BUILDDIR)/merlin32/Source/merlin32.js
