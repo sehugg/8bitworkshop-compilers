@@ -32,3 +32,9 @@
 [submodule "batariBasic"]
 	path = batariBasic
 	url = https://github.com/sehugg/batariBasic
+[submodule "c2t"]
+	path = c2t
+	url = https://github.com/datajerk/c2t
+[submodule "liblzg"]
+	path = liblzg
+	url = https://github.com/mbitsnbites/liblzg

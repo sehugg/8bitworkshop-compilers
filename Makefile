@@ -6,7 +6,7 @@ FSDIR=$(OUTPUTDIR)/fs
 WASMDIR=$(OUTPUTDIR)/wasm
 
 FILE_PACKAGER=python $(EMSDK)/upstream/emscripten/tools/file_packager.py
-ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32
+ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t
 
 .PHONY: clean clobber prepare $(ALLTARGETS)
 
@@ -38,6 +38,8 @@ $(FSDIR)/fs%.js: $(BUILDDIR)/%/fsroot
 %.js: %
 	sed -r 's/(return \w+)[.]ready/\1;\/\/.ready/' < $< > $@
 	cp $@ $(WASMDIR)/
+
+%.wasm: %.js
 	cp $*.wasm $(WASMDIR)/
 
 EMCC_FLAGS= \
@@ -104,7 +106,7 @@ sdcc.fsroot:
 	ln -s $(CURDIR)/sdcc/sdcc/device/lib/build $(BUILDDIR)/sdcc/fsroot/lib
 
 sdcc: prepare copy.sdcc sdcc.build sdcc.fsroot $(FSDIR)/fssdcc.js \
-$(BUILDDIR)/sdcc/sdcc/bin/sdcc.js
+$(BUILDDIR)/sdcc/sdcc/bin/sdcc.wasm
 
 ### 6809tools
 
@@ -119,9 +121,9 @@ $(BUILDDIR)/sdcc/sdcc/bin/sdcc.js
 	cd $(BUILDDIR)/6809tools/cmoc/src && emmake make cmoc EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=cmoc"
 
 6809tools: 6809tools.libs 6809tools.wasm \
-$(BUILDDIR)/6809tools/lwtools/lwasm/lwasm.js \
-$(BUILDDIR)/6809tools/lwtools/lwlink/lwlink.js \
-$(BUILDDIR)/6809tools/cmoc/src/cmoc.js
+$(BUILDDIR)/6809tools/lwtools/lwasm/lwasm.wasm \
+$(BUILDDIR)/6809tools/lwtools/lwlink/lwlink.wasm \
+$(BUILDDIR)/6809tools/cmoc/src/cmoc.wasm
 
 ### yasm
 
@@ -133,7 +135,7 @@ yasm.wasm: copy.yasm
 	cd yasm && cp --preserve=mode genperf* gp-* re2c* genmacro* genversion* genstring* genmodule* $(BUILDDIR)/yasm/
 	cd $(BUILDDIR)/yasm && emmake make yasm EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=yasm"
 
-yasm: yasm.libs yasm.wasm $(BUILDDIR)/yasm/yasm.js
+yasm: yasm.libs yasm.wasm $(BUILDDIR)/yasm/yasm.wasm
 
 ### verilator
 
@@ -146,14 +148,14 @@ verilator.wasm: copy.verilator
 	sed -i 's/-lstdc++/#-lstdc++/g' $(BUILDDIR)/verilator/src/Makefile_obj
 	cd $(BUILDDIR)/verilator/src && emmake make ../bin/verilator_bin EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=verilator_bin -s INITIAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1"
 
-verilator: verilator.libs verilator.wasm $(BUILDDIR)/verilator/bin/verilator_bin.js
+verilator: verilator.libs verilator.wasm $(BUILDDIR)/verilator/bin/verilator_bin.wasm
 
 ### zmac
 
 zmac.wasm: copy.zmac
 	cd $(BUILDDIR)/zmac && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=zmac"
 
-zmac: zmac.wasm $(BUILDDIR)/zmac/zmac.js
+zmac: zmac.wasm $(BUILDDIR)/zmac/zmac.wasm
 
 ### smlrc
 
@@ -172,7 +174,7 @@ smlrc.fsroot:
 	ln -s $(CURDIR)/SmallerC/v0100/lib $(BUILDDIR)/smlrc/fsroot/lib
 	rm -f $(BUILDDIR)/smlrc/fsroot/lib/lc?.a # remove non-DOS libs
 
-smlrc: smlrc.libs smlrc.wasm $(BUILDDIR)/SmallerC/smlrc.js smlrc.fsroot $(FSDIR)/fssmlrc.js
+smlrc: smlrc.libs smlrc.wasm $(BUILDDIR)/SmallerC/smlrc.wasm smlrc.fsroot $(FSDIR)/fssmlrc.js
 
 ### nesasm
 
@@ -180,7 +182,7 @@ nesasm.wasm: copy.nesasm
 	sed -i 's/^CC/#CC/g' $(BUILDDIR)/nesasm/source/Makefile
 	cd $(BUILDDIR)/nesasm/source && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=nesasm"
 
-nesasm: nesasm.wasm $(BUILDDIR)/nesasm/nesasm.js
+nesasm: nesasm.wasm $(BUILDDIR)/nesasm/nesasm.wasm
 
 ### merlin32
 
@@ -188,11 +190,32 @@ merlin32.wasm: copy.merlin32
 	#sed -i 's/^CC/#CC/g' $(BUILDDIR)/merlin32/Source/Makefile
 	cd $(BUILDDIR)/merlin32/Source && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=merlin32"
 
-merlin32: merlin32.wasm $(BUILDDIR)/merlin32/Source/merlin32.js
+merlin32: merlin32.wasm $(BUILDDIR)/merlin32/Source/merlin32.wasm
 
 ### batariBasic
 
 batariBasic.wasm: copy.batariBasic
 	cd $(BUILDDIR)/batariBasic/source && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=batariBasic"
 
-batariBasic: batariBasic.wasm $(BUILDDIR)/batariBasic/source/2600basic.js
+batariBasic: batariBasic.wasm $(BUILDDIR)/batariBasic/source/2600basic.wasm
+
+### c2t
+
+c2t.wasm: copy.c2t
+	sed -i 's/gcc /emcc $(EMCC_FLAGS) /g' $(BUILDDIR)/c2t/Makefile
+	cd $(BUILDDIR)/c2t && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=c2t -s WASM=0"
+
+c2t: c2t.wasm $(BUILDDIR)/c2t/bin/c2t.js
+
+### makewav
+### TODO: asm.js only
+
+makewav.wasm: copy.makewav
+	sed -i 's/-lportaudio//g' $(BUILDDIR)/makewav/Makefile
+	cd $(BUILDDIR)/makewav && emmake make makewav EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=makewav"
+
+makewav: makewav.wasm $(BUILDDIR)/makewav/makewav.js
+
+### liblzg
+### TODO
+
