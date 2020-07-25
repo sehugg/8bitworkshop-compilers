@@ -189,3 +189,10 @@ merlin32.wasm: copy.merlin32
 	cd $(BUILDDIR)/merlin32/Source && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=merlin32"
 
 merlin32: merlin32.wasm $(BUILDDIR)/merlin32/Source/merlin32.js
+
+### batariBasic
+
+batariBasic.wasm: copy.batariBasic
+	cd $(BUILDDIR)/batariBasic/source && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=batariBasic"
+
+batariBasic: batariBasic.wasm $(BUILDDIR)/batariBasic/source/2600basic.js
