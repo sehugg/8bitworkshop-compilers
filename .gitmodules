@@ -38,3 +38,6 @@
 [submodule "liblzg"]
 	path = liblzg
 	url = https://github.com/mbitsnbites/liblzg
+[submodule "makewav"]
+	path = makewav
+	url = https://github.com/sehugg/makewav

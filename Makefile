@@ -211,8 +211,7 @@ c2t: c2t.wasm $(BUILDDIR)/c2t/bin/c2t.js
 ### TODO: asm.js only
 
 makewav.wasm: copy.makewav
-	sed -i 's/-lportaudio//g' $(BUILDDIR)/makewav/Makefile
-	cd $(BUILDDIR)/makewav && emmake make makewav EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=makewav"
+	cd $(BUILDDIR)/makewav && emmake make makewav CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=makewav -s WASM=0"
 
 makewav: makewav.wasm $(BUILDDIR)/makewav/makewav.js
 
