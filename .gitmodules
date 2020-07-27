@@ -41,3 +41,6 @@
 [submodule "makewav"]
 	path = makewav
 	url = https://github.com/sehugg/makewav
+[submodule "fastbasic"]
+	path = fastbasic
+	url = https://github.com/dmsc/fastbasic

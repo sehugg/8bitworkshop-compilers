@@ -6,7 +6,7 @@ FSDIR=$(OUTPUTDIR)/fs
 WASMDIR=$(OUTPUTDIR)/wasm
 
 FILE_PACKAGER=python $(EMSDK)/upstream/emscripten/tools/file_packager.py
-ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t
+ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t makewav
 
 .PHONY: clean clobber prepare $(ALLTARGETS)
 
@@ -218,3 +218,14 @@ makewav: makewav.wasm $(BUILDDIR)/makewav/makewav.js
 ### liblzg
 ### TODO
 
+### fastbasic
+
+fastbasic.wasm: copy.fastbasic
+	sed -i 's/^CXX=/#CXX=/g' $(BUILDDIR)/fastbasic/Makefile
+	cd $(BUILDDIR)/fastbasic && make build build/gen build/gen/int build/obj/cxx-int build/gen/csynt
+	cd $(BUILDDIR)/fastbasic && emmake make build/compiler/fastbasic-int build/compiler/fastbasic-fp \
+		OPTFLAGS="-O3 $(EMCC_FLAGS) -s EXPORT_NAME=fastbasic -s WASM=0"
+
+fastbasic: fastbasic.wasm \
+	$(BUILDDIR)/fastbasic/build/bin/fastbasic-int.js \
+	$(BUILDDIR)/fastbasic/build/bin/fastbasic-fp.js
