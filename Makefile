@@ -224,8 +224,11 @@ fastbasic.wasm: copy.fastbasic
 	sed -i 's/^CXX=/#CXX=/g' $(BUILDDIR)/fastbasic/Makefile
 	cd $(BUILDDIR)/fastbasic && make build build/gen build/gen/int build/obj/cxx-int build/gen/csynt
 	cd $(BUILDDIR)/fastbasic && emmake make build/compiler/fastbasic-int build/compiler/fastbasic-fp \
-		OPTFLAGS="-O3 $(EMCC_FLAGS) -s EXPORT_NAME=fastbasic -s WASM=0"
+		OPTFLAGS="-O3 $(EMCC_FLAGS) -s EXPORT_NAME=fastbasic"
 
-fastbasic: fastbasic.wasm \
-	$(BUILDDIR)/fastbasic/build/bin/fastbasic-int.js \
-	$(BUILDDIR)/fastbasic/build/bin/fastbasic-fp.js
+fastbasic.libs:
+	cd fastbasic && make ASMFLAGS="-I cc65/asminc -D NO_SMCODE"
+
+fastbasic: fastbasic.libs fastbasic.wasm \
+	$(BUILDDIR)/fastbasic/build/bin/fastbasic-int.wasm \
+	$(BUILDDIR)/fastbasic/build/bin/fastbasic-fp.wasm
