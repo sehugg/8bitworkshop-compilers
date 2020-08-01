@@ -44,3 +44,6 @@
 [submodule "fastbasic"]
 	path = fastbasic
 	url = https://github.com/dmsc/fastbasic
+[submodule "dasm"]
+	path = dasm
+	url = https://github.com/sehugg/dasm
