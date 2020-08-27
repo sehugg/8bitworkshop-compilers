@@ -6,7 +6,7 @@ FSDIR=$(OUTPUTDIR)/fs
 WASMDIR=$(OUTPUTDIR)/wasm
 
 FILE_PACKAGER=python $(EMSDK)/upstream/emscripten/tools/file_packager.py
-ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t makewav
+ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t makewav fastbasic dasm
 
 .PHONY: clean clobber prepare $(ALLTARGETS)
 
@@ -239,4 +239,12 @@ dasm.wasm: copy.dasm
 	cd $(BUILDDIR)/dasm/src && emmake make dasm CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=dasm"
 
 dasm: dasm.wasm $(BUILDDIR)/dasm/src/dasm.wasm
+
+### naken_asm
+
+naken_asm.wasm: copy.naken_asm
+	cd $(BUILDDIR)/naken_asm && emconfigure ./configure
+	cd $(BUILDDIR)/naken_asm && emmake make naken_asm CC=emcc LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=naken_asm"
+
+naken_asm: naken_asm.wasm $(BUILDDIR)/naken_asm/naken_asm.wasm
 
