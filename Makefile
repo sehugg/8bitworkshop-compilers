@@ -248,3 +248,12 @@ naken_asm.wasm: copy.naken_asm
 
 naken_asm: naken_asm.wasm $(BUILDDIR)/naken_asm/naken_asm.wasm
 
+### Silice
+
+Silice.wasm: copy.Silice
+	cp -rp Silice/src/libs/* $(BUILDDIR)/Silice/src/libs/
+	mkdir -p $(BUILDDIR)/Silice/BUILD/build-silice
+	sed -i 's/4.2.1/0/g' $(BUILDDIR)/Silice/antlr/antlr4-cpp-runtime-4.7.2-source/CMakeLists.txt
+	cd $(BUILDDIR)/Silice/BUILD/build-silice && emmake cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" ../..
+
+Silice: Silice.wasm $(BUILDDIR)/Silice/Silice.wasm
