@@ -5,7 +5,7 @@ MAKEFILESDIR=$(CURDIR)/makefiles
 FSDIR=$(OUTPUTDIR)/fs
 WASMDIR=$(OUTPUTDIR)/wasm
 
-FILE_PACKAGER=python $(EMSDK)/upstream/emscripten/tools/file_packager.py
+FILE_PACKAGER=python3 $(EMSDK)/upstream/emscripten/tools/file_packager.py
 ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t makewav fastbasic dasm
 
 .PHONY: clean clobber prepare $(ALLTARGETS)
@@ -250,10 +250,21 @@ naken_asm: naken_asm.wasm $(BUILDDIR)/naken_asm/naken_asm.wasm
 
 ### Silice
 
+# https://sourceforge.net/projects/libuuid/files/latest/download
+# emconfigure ./configure --prefix=/home/hugg/emsdk/upstream/emscripten/system
+# emmake make install
+
 Silice.wasm: copy.Silice
 	cp -rp Silice/src/libs/* $(BUILDDIR)/Silice/src/libs/
 	mkdir -p $(BUILDDIR)/Silice/BUILD/build-silice
 	sed -i 's/4.2.1/0/g' $(BUILDDIR)/Silice/antlr/antlr4-cpp-runtime-4.7.2-source/CMakeLists.txt
 	cd $(BUILDDIR)/Silice/BUILD/build-silice && emmake cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" ../..
+	cd $(BUILDDIR)/Silice/BUILD/build-silice && emmake make -j8 EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=silice"
 
-Silice: Silice.wasm $(BUILDDIR)/Silice/Silice.wasm
+Silice.fsroot:
+	rm -fr $(BUILDDIR)/Silice/fsroot
+	mkdir -p $(BUILDDIR)/Silice/fsroot
+	ln -s $(CURDIR)/Silice/frameworks $(BUILDDIR)/Silice/fsroot
+
+Silice: Silice.wasm $(BUILDDIR)/Silice/BUILD/build-silice/silice.wasm Silice.fsroot $(FSDIR)/fsSilice.js
+
