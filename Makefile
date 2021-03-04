@@ -257,3 +257,15 @@ Silice.wasm: copy.Silice
 	cd $(BUILDDIR)/Silice/BUILD/build-silice && emmake cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" ../..
 
 Silice: Silice.wasm $(BUILDDIR)/Silice/Silice.wasm
+
+### wiz
+
+wiz.wasm: copy.wiz
+	sed -i 's/__EMSCRIPTEN__/__XXXEMSRC__/g' $(BUILDDIR)/wiz/src/wiz/wiz.cpp
+	sed -i 's/-fno-rtti//g' $(BUILDDIR)/wiz/Makefile
+	sed -i 's/ -lm --bind / -lm /g' $(BUILDDIR)/wiz/Makefile
+	sed -i 's/ --memory-init-file 0 -s NO_FILESYSTEM=1 / /g' $(BUILDDIR)/wiz/Makefile
+	sed -i 's/ -s WASM=0 / /g' $(BUILDDIR)/wiz/Makefile
+	cd $(BUILDDIR)/wiz && emmake make CC=emcc LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=wiz"
+
+wiz: wiz.wasm $(BUILDDIR)/wiz/bin/wiz.wasm

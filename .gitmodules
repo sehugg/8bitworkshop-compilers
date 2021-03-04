@@ -53,3 +53,6 @@
 [submodule "Silice"]
 	path = Silice
 	url = https://github.com/sehugg/Silice
+[submodule "wiz"]
+	path = wiz
+	url = ./wiz
