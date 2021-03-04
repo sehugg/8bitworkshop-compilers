@@ -274,8 +274,13 @@ wiz.wasm: copy.wiz
 	sed -i 's/__EMSCRIPTEN__/__XXXEMSRC__/g' $(BUILDDIR)/wiz/src/wiz/wiz.cpp
 	sed -i 's/-fno-rtti//g' $(BUILDDIR)/wiz/Makefile
 	sed -i 's/ -lm --bind / -lm /g' $(BUILDDIR)/wiz/Makefile
-	sed -i 's/ --memory-init-file 0 -s NO_FILESYSTEM=1 / /g' $(BUILDDIR)/wiz/Makefile
+	sed -i 's/ -s NO_FILESYSTEM=1 / /g' $(BUILDDIR)/wiz/Makefile
 	sed -i 's/ -s WASM=0 / /g' $(BUILDDIR)/wiz/Makefile
-	cd $(BUILDDIR)/wiz && emmake make CC=emcc LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=wiz"
+	cd $(BUILDDIR)/wiz && emmake make CC=emcc LXXFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=wiz"
 
-wiz: wiz.wasm $(BUILDDIR)/wiz/bin/wiz.wasm
+wiz.fsroot:
+	rm -fr $(BUILDDIR)/wiz/fsroot
+	mkdir -p $(BUILDDIR)/wiz/fsroot
+	ln -s $(CURDIR)/wiz/common $(BUILDDIR)/wiz/fsroot
+
+wiz: wiz.wasm $(BUILDDIR)/wiz/bin/wiz.wasm wiz.fsroot $(FSDIR)/fswiz.js
