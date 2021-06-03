@@ -297,3 +297,12 @@ armips.wasm: copy.armips
 	cd $(BUILDDIR)/armips/build && emmake make -j2 EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=armips -DGHC_OS_LINUX -DGHC_OS_DETECTED"
 
 armips: armips.wasm $(BUILDDIR)/armips/build/armips.wasm
+
+## vasm
+
+vasm.wasm: copy.vasm
+	sed -i 's/gcc/emcc $(EMCC_FLAGS) /g' $(BUILDDIR)/vasm/Makefile
+	cd $(BUILDDIR)/vasm && emmake make CPU=arm SYNTAX=std EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=vasm"
+
+vasm: vasm.wasm $(BUILDDIR)/vasm/vasmarm_std.wasm
+
