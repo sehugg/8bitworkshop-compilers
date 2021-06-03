@@ -287,3 +287,13 @@ wiz.fsroot:
 	ln -s $(CURDIR)/wiz/common $(BUILDDIR)/wiz/fsroot
 
 wiz: wiz.wasm $(BUILDDIR)/wiz/bin/wiz.wasm wiz.fsroot $(FSDIR)/fswiz.js
+
+### armips
+
+armips.wasm: copy.armips
+	cp -rp armips/ext/filesystem $(BUILDDIR)/armips/ext
+	cd $(BUILDDIR)/armips && mkdir -p build
+	cd $(BUILDDIR)/armips/build && emmake cmake -DCMAKE_BUILD_TYPE=Release ..
+	cd $(BUILDDIR)/armips/build && emmake make -j2 EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=armips -DGHC_OS_LINUX -DGHC_OS_DETECTED"
+
+armips: armips.wasm $(BUILDDIR)/armips/build/armips.wasm

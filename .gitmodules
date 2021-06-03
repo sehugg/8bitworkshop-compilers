@@ -56,3 +56,6 @@
 [submodule "wiz"]
 	path = wiz
 	url = ./wiz
+[submodule "armips"]
+	path = armips
+	url = https://github.com/Kingcom/armips
