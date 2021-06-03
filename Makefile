@@ -244,7 +244,10 @@ dasm: dasm.wasm $(BUILDDIR)/dasm/src/dasm.wasm
 
 naken_asm.wasm: copy.naken_asm
 	cd $(BUILDDIR)/naken_asm && emconfigure ./configure
-	cd $(BUILDDIR)/naken_asm && emmake make naken_asm CC=emcc LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=naken_asm"
+	sed -i 's/ -DREADLINE/ /g' $(BUILDDIR)/naken_asm/config.mak
+	sed -i 's/ -lreadline/ /g' $(BUILDDIR)/naken_asm/config.mak
+	sed -i 's|$$(CC) -o ../naken_util|echo |g' $(BUILDDIR)/naken_asm/build/Makefile
+	cd $(BUILDDIR)/naken_asm && emmake make all CC=emcc LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=naken_asm"
 
 naken_asm: naken_asm.wasm $(BUILDDIR)/naken_asm/naken_asm.wasm
 
