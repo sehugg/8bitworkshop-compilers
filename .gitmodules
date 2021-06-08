@@ -61,4 +61,4 @@
 	url = https://github.com/Kingcom/armips
 [submodule "vasm"]
 	path = vasm
-	url = https://github.com/mbitsnbites/vasm-mirror
+	url = https://github.com/StarWolf3000/vasm-mirror
