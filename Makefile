@@ -140,15 +140,17 @@ yasm: yasm.libs yasm.wasm $(BUILDDIR)/yasm/yasm.wasm
 ### verilator
 
 verilator.libs:
-	cd verilator && autoconf && ./configure && make
+	cd verilator && autoconf && ./configure && make -j 4
 
-verilator.wasm: copy.verilator
+verilator.update:
+	cd $(BUILDDIR)/verilator/src && emmake make -j 4 ../bin/verilator_bin EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=verilator_bin -s INITIAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1"
+
+verilator.prepare: copy.verilator
 	cd $(BUILDDIR)/verilator && autoconf && emconfigure ./configure --prefix=/share
 	cp /usr/include/FlexLexer.h $(BUILDDIR)/verilator/include
-	sed -i 's/-lstdc++/#-lstdc++/g' $(BUILDDIR)/verilator/src/Makefile_obj
-	cd $(BUILDDIR)/verilator/src && emmake make ../bin/verilator_bin EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=verilator_bin -s INITIAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1"
+	#sed -i 's/-lstdc++/#-lstdc++/g' $(BUILDDIR)/verilator/src/Makefile_obj
 
-verilator: verilator.libs verilator.wasm $(BUILDDIR)/verilator/bin/verilator_bin.wasm
+verilator: verilator.libs verilator.prepare verilator.update $(BUILDDIR)/verilator/bin/verilator_bin.wasm
 
 ### zmac
 
