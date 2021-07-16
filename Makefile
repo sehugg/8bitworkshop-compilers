@@ -51,10 +51,22 @@ EMCC_FLAGS= \
 
 ### cc65
 
-cc65: copy.cc65
+cc65.wasm: copy.cc65
 	cd cc65 && make
-	cd $(BUILDDIR)/cc65 && make -f $(MAKEFILESDIR)/Makefile.cc65 binaries OUTDIR=$(WASMDIR)
-	cd cc65 && make -f $(MAKEFILESDIR)/Makefile.cc65 filesystems OUTDIR=$(FSDIR)
+	cd $(BUILDDIR)/cc65 && emmake make cc65 ca65 ld65 CC=emcc EXE_SUFFIX=.js
+
+$(BUILDDIR)/65-%/fsroot:
+	mkdir -p $@ $@/cfg $@/lib $@/target
+	cp -rp cc65/include cc65/asminc $@
+	cp -rp cc65/cfg/$** $@/cfg/
+	cp -rp cc65/lib/$** $@/lib/
+	cp -rpf cc65/target/$** $@/target/
+
+cc65.filesystems: \
+	$(FSDIR)/fs65-nes.js $(FSDIR)/fs65-apple2.js $(FSDIR)/fs65-c64.js \
+	$(FSDIR)/fs65-atari.js $(FSDIR)/fs65-sim6502.js
+
+cc65: cc65.wasm $(BUILDDIR)/cc65/bin/cc65.wasm $(BUILDDIR)/cc65/bin/ca65.wasm $(BUILDDIR)/cc65/bin/ld65.wasm cc65.filesystems
 
 ### sdcc
 
