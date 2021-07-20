@@ -40,12 +40,13 @@ $(FSDIR)/fs%.js: $(BUILDDIR)/%/fsroot
 	cp $@ $(WASMDIR)/
 
 %.wasm: %.js
-	cp $*.wasm $(WASMDIR)/
+	cp $*.wasm $*.js $(WASMDIR)/
+	node -e "require('./embuild/cc65/bin/cc65.js')().then((m)=>{m.callMain(['--help'])})" 2> $*.stderr 1> $*.stdout
 
 EMCC_FLAGS= \
 	--memory-init-file 0 \
 	-s MODULARIZE=1 \
-	-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["FS","callMain"]' \
+	-s 'EXPORTED_RUNTIME_METHODS=["FS","callMain"]' \
 	-s FORCE_FILESYSTEM=1 \
 	-lworkerfs.js
 
@@ -53,7 +54,9 @@ EMCC_FLAGS= \
 
 cc65.wasm: copy.cc65
 	cd cc65 && make
-	cd $(BUILDDIR)/cc65 && emmake make cc65 ca65 ld65 CC=emcc EXE_SUFFIX=.js
+	cd $(BUILDDIR)/cc65 && emmake make cc65 CC=emcc EXE_SUFFIX=.js LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=cc65"
+	cd $(BUILDDIR)/cc65 && emmake make ca65 CC=emcc EXE_SUFFIX=.js LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ca65"
+	cd $(BUILDDIR)/cc65 && emmake make ld65 CC=emcc EXE_SUFFIX=.js LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ld65"
 
 $(BUILDDIR)/65-%/fsroot:
 	mkdir -p $@ $@/cfg $@/lib $@/target
