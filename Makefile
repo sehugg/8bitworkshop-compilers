@@ -39,6 +39,10 @@ $(FSDIR)/fs%.js: $(BUILDDIR)/%/fsroot
 	sed -r 's/(return \w+)[.]ready/\1;\/\/.ready/' < $< > $@
 	cp $@ $(WASMDIR)/
 
+%.js: %.exe
+	sed -r 's/(return \w+)[.]ready/\1;\/\/.ready/' < $< > $@
+	cp $@ $(WASMDIR)/
+
 %.wasm: %.js
 	cp $*.wasm $(WASMDIR)/
 
@@ -51,10 +55,21 @@ EMCC_FLAGS= \
 
 ### cc65
 
-cc65: copy.cc65
+cc65.wasm: copy.cc65
 	cd cc65 && make
-	cd $(BUILDDIR)/cc65 && make -f $(MAKEFILESDIR)/Makefile.cc65 binaries OUTDIR=$(WASMDIR)
-	cd cc65 && make -f $(MAKEFILESDIR)/Makefile.cc65 filesystems OUTDIR=$(FSDIR)
+	cd $(BUILDDIR)/cc65 && emmake make cc65 ca65 ld65 CC=emcc
+
+$(FSDIR)/fs65-%.js:
+	cd cc65 && $(FILE_PACKAGER) $(FSDIR)/fs65-$*.data --separate-metadata --js-output=$@ \
+	--preload include asminc cfg/$** lib/$** target/$**
+
+cc65.filesystems: $(FSDIR)/fs65-nes.js $(FSDIR)/fs65-apple2.js $(FSDIR)/fs65-c64.js\
+	$(FSDIR)/fs65-atari.js # $(FSDIR)/fs65-sim6502.js
+
+cc65: cc65.wasm cc65.filesystems \
+	$(BUILDDIR)/cc65/bin/cc65.wasm \
+	$(BUILDDIR)/cc65/bin/ca65.wasm \
+	$(BUILDDIR)/cc65/bin/ld65.wasm
 
 ### sdcc
 
