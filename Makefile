@@ -41,7 +41,7 @@ $(FSDIR)/fs%.js: $(BUILDDIR)/%/fsroot
 
 %.wasm: %.js
 	cp $*.wasm $*.js $(WASMDIR)/
-	#node -e "require('./embuild/cc65/bin/cc65.js')().then((m)=>{m.callMain(['--help'])})" 2> $*.stderr 1> $*.stdout
+	node -e "require('$*.js')().then((m)=>{m.callMain(['--help'])})" 2> $*.stderr 1> $*.stdout
 
 EMCC_FLAGS= -Os \
 	--memory-init-file 0 \
@@ -80,7 +80,7 @@ $(BUILDDIR)/65-%/fsroot:
 
 cc65.filesystems: \
 	$(FSDIR)/fs65-nes.js $(FSDIR)/fs65-apple2.js $(FSDIR)/fs65-c64.js \
-	$(FSDIR)/fs65-atari.js $(FSDIR)/fs65-sim6502.js
+	$(FSDIR)/fs65-atari.js # $(FSDIR)/fs65-sim6502.js
 
 cc65: cc65.wasm $(BUILDDIR)/cc65/bin/cc65.wasm $(BUILDDIR)/cc65/bin/ca65.wasm $(BUILDDIR)/cc65/bin/ld65.wasm cc65.filesystems
 
