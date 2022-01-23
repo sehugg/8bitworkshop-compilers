@@ -58,9 +58,9 @@ EMCC_FLAGS= -Os \
 
 cc65.wasm: copy.cc65
 	cd cc65 && make
-	cd $(BUILDDIR)/cc65 && emmake make cc65 CC=emcc EMCC_FLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=cc65"
-	cd $(BUILDDIR)/cc65 && emmake make ca65 CC=emcc EMCC_FLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ca65"
-	cd $(BUILDDIR)/cc65 && emmake make ld65 CC=emcc EMCC_FLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ld65"
+	cd $(BUILDDIR)/cc65 && emmake make cc65 CC=emcc LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=cc65"
+	cd $(BUILDDIR)/cc65 && emmake make ca65 CC=emcc LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ca65"
+	cd $(BUILDDIR)/cc65 && emmake make ld65 CC=emcc LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ld65"
 
 $(FSDIR)/fs65-%.js:
 	cd cc65 && $(FILE_PACKAGER) $(FSDIR)/fs65-$*.data --separate-metadata --js-output=$@ \
