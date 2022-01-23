@@ -37,16 +37,16 @@ $(FSDIR)/fs%.js: $(BUILDDIR)/%/fsroot
 
 %.js: %
 	sed -r 's/(return \w+)[.]ready/\1;\/\/.ready/' < $< > $@
-	cp $@ $(WASMDIR)/
 
 %.wasm: %.js
 	cp $*.wasm $*.js $(WASMDIR)/
-	node -e "require('$*.js')().then((m)=>{m.callMain(['--help'])})" 2> $*.stderr 1> $*.stdout
+	#node -e "require('$*.js')().then((m)=>{m.callMain(['--help'])})" 2> $*.stderr 1> $*.stdout
+	-node -e "require('$*.js')({arguments:['--help']})" 2> $*.stderr 1> $*.stdout
 
 EMCC_FLAGS= -Os \
 	--memory-init-file 0 \
 	-s MODULARIZE=1 \
-	-s 'EXPORTED_RUNTIME_METHODS=["FS","callMain"]' \
+	-s 'EXPORTED_RUNTIME_METHODS=[\"FS\",\"callMain\"]' \
 	-s FORCE_FILESYSTEM=1 \
 	-s ALLOW_MEMORY_GROWTH=1 \
 	-lworkerfs.js
@@ -55,9 +55,9 @@ EMCC_FLAGS= -Os \
 
 cc65.wasm: copy.cc65
 	cd cc65 && make
-	cd $(BUILDDIR)/cc65 && emmake make cc65 CC=emcc EXE_SUFFIX=.js LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=cc65"
-	cd $(BUILDDIR)/cc65 && emmake make ca65 CC=emcc EXE_SUFFIX=.js LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ca65"
-	cd $(BUILDDIR)/cc65 && emmake make ld65 CC=emcc EXE_SUFFIX=.js LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ld65"
+	cd $(BUILDDIR)/cc65 && emmake make cc65 CC=emcc EXE_SUFFIX= LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=cc65"
+	cd $(BUILDDIR)/cc65 && emmake make ca65 CC=emcc EXE_SUFFIX= LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ca65"
+	cd $(BUILDDIR)/cc65 && emmake make ld65 CC=emcc EXE_SUFFIX= LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ld65"
 
 $(FSDIR)/fs65-%.js:
 	cd cc65 && $(FILE_PACKAGER) $(FSDIR)/fs65-$*.data --separate-metadata --js-output=$@ \
