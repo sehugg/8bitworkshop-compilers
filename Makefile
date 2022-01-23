@@ -39,12 +39,9 @@ $(FSDIR)/fs%.js: $(BUILDDIR)/%/fsroot
 	sed -r 's/(return \w+)[.]ready/\1;\/\/.ready/' < $< > $@
 	cp $@ $(WASMDIR)/
 
-%.js: %.exe
-	sed -r 's/(return \w+)[.]ready/\1;\/\/.ready/' < $< > $@
-	cp $@ $(WASMDIR)/
-
 %.wasm: %.js
-	cp $*.wasm $(WASMDIR)/
+	cp $*.wasm $*.js $(WASMDIR)/
+	#node -e "require('./embuild/cc65/bin/cc65.js')().then((m)=>{m.callMain(['--help'])})" 2> $*.stderr 1> $*.stdout
 
 EMCC_FLAGS= -Os \
 	--memory-init-file 0 \
@@ -58,9 +55,9 @@ EMCC_FLAGS= -Os \
 
 cc65.wasm: copy.cc65
 	cd cc65 && make
-	cd $(BUILDDIR)/cc65 && emmake make cc65 CC=emcc LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=cc65"
-	cd $(BUILDDIR)/cc65 && emmake make ca65 CC=emcc LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ca65"
-	cd $(BUILDDIR)/cc65 && emmake make ld65 CC=emcc LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ld65"
+	cd $(BUILDDIR)/cc65 && emmake make cc65 CC=emcc EXE_SUFFIX=.js LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=cc65"
+	cd $(BUILDDIR)/cc65 && emmake make ca65 CC=emcc EXE_SUFFIX=.js LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ca65"
+	cd $(BUILDDIR)/cc65 && emmake make ld65 CC=emcc EXE_SUFFIX=.js LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ld65"
 
 $(FSDIR)/fs65-%.js:
 	cd cc65 && $(FILE_PACKAGER) $(FSDIR)/fs65-$*.data --separate-metadata --js-output=$@ \
@@ -73,6 +70,19 @@ cc65: cc65.wasm cc65.filesystems \
 	$(BUILDDIR)/cc65/bin/cc65.wasm \
 	$(BUILDDIR)/cc65/bin/ca65.wasm \
 	$(BUILDDIR)/cc65/bin/ld65.wasm
+
+$(BUILDDIR)/65-%/fsroot:
+	mkdir -p $@ $@/cfg $@/lib $@/target
+	cp -rp cc65/include cc65/asminc $@
+	cp -rp cc65/cfg/$** $@/cfg/
+	cp -rp cc65/lib/$** $@/lib/
+	cp -rpf cc65/target/$** $@/target/
+
+cc65.filesystems: \
+	$(FSDIR)/fs65-nes.js $(FSDIR)/fs65-apple2.js $(FSDIR)/fs65-c64.js \
+	$(FSDIR)/fs65-atari.js $(FSDIR)/fs65-sim6502.js
+
+cc65: cc65.wasm $(BUILDDIR)/cc65/bin/cc65.wasm $(BUILDDIR)/cc65/bin/ca65.wasm $(BUILDDIR)/cc65/bin/ld65.wasm cc65.filesystems
 
 ### sdcc
 
@@ -158,15 +168,17 @@ yasm: yasm.libs yasm.wasm $(BUILDDIR)/yasm/yasm.wasm
 ### verilator
 
 verilator.libs:
-	cd verilator && autoconf && ./configure && make
+	cd verilator && autoconf && ./configure && make -j 4
 
-verilator.wasm: copy.verilator
+verilator.update:
+	cd $(BUILDDIR)/verilator/src && emmake make -j 4 ../bin/verilator_bin EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=verilator_bin -s INITIAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1"
+
+verilator.prepare: copy.verilator
 	cd $(BUILDDIR)/verilator && autoconf && emconfigure ./configure --prefix=/share
 	cp /usr/include/FlexLexer.h $(BUILDDIR)/verilator/include
-	sed -i 's/-lstdc++/#-lstdc++/g' $(BUILDDIR)/verilator/src/Makefile_obj
-	cd $(BUILDDIR)/verilator/src && emmake make ../bin/verilator_bin EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=verilator_bin -s INITIAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1"
+	#sed -i 's/-lstdc++/#-lstdc++/g' $(BUILDDIR)/verilator/src/Makefile_obj
 
-verilator: verilator.libs verilator.wasm $(BUILDDIR)/verilator/bin/verilator_bin.wasm
+verilator: verilator.libs verilator.prepare verilator.update $(BUILDDIR)/verilator/bin/verilator_bin.wasm
 
 ### zmac
 

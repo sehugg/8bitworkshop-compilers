@@ -10,3 +10,4 @@ Type "make"
 
 Output files in `output/`
 
+Last tested with Emscripten 2.0.6
