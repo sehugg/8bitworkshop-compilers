@@ -49,7 +49,7 @@ $(FSDIR)/fs%.js: $(BUILDDIR)/%/fsroot
 EMCC_FLAGS= \
 	--memory-init-file 0 \
 	-s MODULARIZE=1 \
-	-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["FS","callMain"]' \
+	-s 'EXPORTED_RUNTIME_METHODS=["FS","callMain"]' \
 	-s FORCE_FILESYSTEM=1 \
 	-lworkerfs.js
 
