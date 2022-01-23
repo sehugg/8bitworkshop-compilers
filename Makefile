@@ -6,7 +6,7 @@ FSDIR=$(OUTPUTDIR)/fs
 WASMDIR=$(OUTPUTDIR)/wasm
 
 FILE_PACKAGER=python3 $(EMSDK)/upstream/emscripten/tools/file_packager.py
-ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t makewav fastbasic dasm
+ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t makewav fastbasic dasm Silice wiz
 
 .PHONY: clean clobber prepare $(ALLTARGETS)
 
@@ -143,10 +143,10 @@ $(BUILDDIR)/sdcc/sdcc/bin/sdcc.wasm
 	cd 6809tools/cmoc && ./configure && make
 
 6809tools.wasm: copy.6809tools
-	cd $(BUILDDIR)/6809tools/lwtools && emmake make lwasm EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwasm"
-	cd $(BUILDDIR)/6809tools/lwtools && emmake make lwlink EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwlink"
-	cd $(BUILDDIR)/6809tools/cmoc && emconfigure ./configure --prefix=/share EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0"
-	cd $(BUILDDIR)/6809tools/cmoc/src && emmake make cmoc EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=cmoc"
+	cd $(BUILDDIR)/6809tools/lwtools && emmake make lwasm EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwasm"
+	cd $(BUILDDIR)/6809tools/lwtools && emmake make lwlink EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwlink"
+	cd $(BUILDDIR)/6809tools/cmoc && emconfigure ./configure --prefix=/share EMCC_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0"
+	cd $(BUILDDIR)/6809tools/cmoc/src && emmake make cmoc EMCC_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=cmoc"
 
 6809tools: 6809tools.libs 6809tools.wasm \
 $(BUILDDIR)/6809tools/lwtools/lwasm/lwasm.wasm \
@@ -161,7 +161,7 @@ yasm.libs:
 yasm.wasm: copy.yasm
 	cd $(BUILDDIR)/yasm && sh autogen.sh && emconfigure ./configure --prefix=/share
 	cd yasm && cp --preserve=mode genperf* gp-* re2c* genmacro* genversion* genstring* genmodule* $(BUILDDIR)/yasm/
-	cd $(BUILDDIR)/yasm && emmake make yasm EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=yasm"
+	cd $(BUILDDIR)/yasm && emmake make yasm EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=yasm"
 
 yasm: yasm.libs yasm.wasm $(BUILDDIR)/yasm/yasm.wasm
 
@@ -171,7 +171,7 @@ verilator.libs:
 	cd verilator && autoconf && ./configure && make -j 4
 
 verilator.update:
-	cd $(BUILDDIR)/verilator/src && emmake make -j 4 ../bin/verilator_bin EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=verilator_bin -s INITIAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1"
+	cd $(BUILDDIR)/verilator/src && emmake make -j 4 ../bin/verilator_bin EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=verilator_bin -s INITIAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1"
 
 verilator.prepare: copy.verilator
 	cd $(BUILDDIR)/verilator && autoconf && emconfigure ./configure --prefix=/share
@@ -183,7 +183,7 @@ verilator: verilator.libs verilator.prepare verilator.update $(BUILDDIR)/verilat
 ### zmac
 
 zmac.wasm: copy.zmac
-	cd $(BUILDDIR)/zmac && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=zmac"
+	cd $(BUILDDIR)/zmac && emmake make EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=zmac"
 
 zmac: zmac.wasm $(BUILDDIR)/zmac/zmac.wasm
 
@@ -195,7 +195,7 @@ smlrc.libs:
 
 smlrc.wasm: copy.SmallerC
 	sed -i 's/^CC = /#CC =/g' $(BUILDDIR)/SmallerC/common.mk 
-	cd $(BUILDDIR)/SmallerC && emmake make smlrc EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=smlrc"
+	cd $(BUILDDIR)/SmallerC && emmake make smlrc EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=smlrc"
 
 smlrc.fsroot:
 	rm -fr $(BUILDDIR)/smlrc/fsroot
@@ -210,7 +210,7 @@ smlrc: smlrc.libs smlrc.wasm $(BUILDDIR)/SmallerC/smlrc.wasm smlrc.fsroot $(FSDI
 
 nesasm.wasm: copy.nesasm
 	sed -i 's/^CC/#CC/g' $(BUILDDIR)/nesasm/source/Makefile
-	cd $(BUILDDIR)/nesasm/source && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=nesasm"
+	cd $(BUILDDIR)/nesasm/source && emmake make EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=nesasm"
 
 nesasm: nesasm.wasm $(BUILDDIR)/nesasm/nesasm.wasm
 
@@ -218,14 +218,14 @@ nesasm: nesasm.wasm $(BUILDDIR)/nesasm/nesasm.wasm
 
 merlin32.wasm: copy.merlin32
 	#sed -i 's/^CC/#CC/g' $(BUILDDIR)/merlin32/Source/Makefile
-	cd $(BUILDDIR)/merlin32/Source && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=merlin32"
+	cd $(BUILDDIR)/merlin32/Source && emmake make EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=merlin32"
 
 merlin32: merlin32.wasm $(BUILDDIR)/merlin32/Source/merlin32.wasm
 
 ### batariBasic
 
 batariBasic.wasm: copy.batariBasic
-	cd $(BUILDDIR)/batariBasic/source && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=batariBasic"
+	cd $(BUILDDIR)/batariBasic/source && emmake make EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=batariBasic"
 
 batariBasic: batariBasic.wasm $(BUILDDIR)/batariBasic/source/2600basic.wasm
 
@@ -233,7 +233,7 @@ batariBasic: batariBasic.wasm $(BUILDDIR)/batariBasic/source/2600basic.wasm
 
 c2t.wasm: copy.c2t
 	sed -i 's/gcc /emcc $(EMCC_FLAGS) /g' $(BUILDDIR)/c2t/Makefile
-	cd $(BUILDDIR)/c2t && emmake make EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=c2t -s WASM=0"
+	cd $(BUILDDIR)/c2t && emmake make EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=c2t -s WASM=0"
 
 c2t: c2t.wasm $(BUILDDIR)/c2t/bin/c2t.js
 
@@ -277,7 +277,7 @@ naken_asm.wasm: copy.naken_asm
 	sed -i 's/ -DREADLINE/ /g' $(BUILDDIR)/naken_asm/config.mak
 	sed -i 's/ -lreadline/ /g' $(BUILDDIR)/naken_asm/config.mak
 	sed -i 's|$$(CC) -o ../naken_util|echo |g' $(BUILDDIR)/naken_asm/build/Makefile
-	cd $(BUILDDIR)/naken_asm && emmake make all CC=emcc LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=naken_asm"
+	cd $(BUILDDIR)/naken_asm && emmake make all CC=emcc EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=naken_asm"
 
 naken_asm: naken_asm.wasm $(BUILDDIR)/naken_asm/naken_asm.wasm
 
@@ -292,7 +292,7 @@ Silice.wasm: copy.Silice
 	mkdir -p $(BUILDDIR)/Silice/BUILD/build-silice
 	sed -i 's/4.2.1/0/g' $(BUILDDIR)/Silice/antlr/antlr4-cpp-runtime-4.7.2-source/CMakeLists.txt
 	cd $(BUILDDIR)/Silice/BUILD/build-silice && emmake cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" ../..
-	cd $(BUILDDIR)/Silice/BUILD/build-silice && emmake make -j8 EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=silice"
+	cd $(BUILDDIR)/Silice/BUILD/build-silice && emmake make -j8 EMCC_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=silice"
 
 Silice.fsroot:
 	rm -fr $(BUILDDIR)/Silice/fsroot
@@ -326,15 +326,15 @@ armips.wasm: copy.armips
 	sed -i 's/Global.multiThreading = true;/Global.multiThreading = false;/g' $(BUILDDIR)/armips/Core/Assembler.cpp
 	cd $(BUILDDIR)/armips && mkdir -p build
 	cd $(BUILDDIR)/armips/build && emmake cmake -DCMAKE_BUILD_TYPE=Release ..
-	cd $(BUILDDIR)/armips/build && emmake make -j2 EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=armips -DGHC_OS_LINUX -DGHC_OS_DETECTED"
+	cd $(BUILDDIR)/armips/build && emmake make -j2 EMCC_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=armips -DGHC_OS_LINUX -DGHC_OS_DETECTED"
 
 armips: armips.wasm $(BUILDDIR)/armips/build/armips.wasm
 
 ## vasm
 
 vasm.wasm: copy.vasm
-	sed -i 's/gcc/emcc $(EMCC_FLAGS) /g' $(BUILDDIR)/vasm/Makefile
-	cd $(BUILDDIR)/vasm && emmake make CPU=arm SYNTAX=std EMMAKEN_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=vasm"
+	sed -i 's/gcc/emcc /g' $(BUILDDIR)/vasm/Makefile
+	cd $(BUILDDIR)/vasm && emmake make CPU=arm SYNTAX=std EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=vasm"
 
 vasm: vasm.wasm $(BUILDDIR)/vasm/vasmarm_std.wasm
 
