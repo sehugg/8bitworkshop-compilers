@@ -54,6 +54,7 @@ EMCC_FLAGS= -Os \
 ### cc65
 
 cc65.wasm: copy.cc65
+	mkdir -p cc65/target/none
 	cd cc65 && make
 	cd $(BUILDDIR)/cc65 && emmake make cc65 CC=emcc EXE_SUFFIX= LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=cc65"
 	cd $(BUILDDIR)/cc65 && emmake make ca65 CC=emcc EXE_SUFFIX= LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ca65"
@@ -63,14 +64,6 @@ $(FSDIR)/fs65-%.js:
 	cd cc65 && $(FILE_PACKAGER) $(FSDIR)/fs65-$*.data --separate-metadata --js-output=$@ \
 	--preload include asminc cfg/$** lib/$** target/$**
 
-cc65.filesystems: $(FSDIR)/fs65-nes.js $(FSDIR)/fs65-apple2.js $(FSDIR)/fs65-c64.js\
-	$(FSDIR)/fs65-atari.js # $(FSDIR)/fs65-sim6502.js
-
-cc65: cc65.wasm cc65.filesystems \
-	$(BUILDDIR)/cc65/bin/cc65.wasm \
-	$(BUILDDIR)/cc65/bin/ca65.wasm \
-	$(BUILDDIR)/cc65/bin/ld65.wasm
-
 $(BUILDDIR)/65-%/fsroot:
 	mkdir -p $@ $@/cfg $@/lib $@/target
 	cp -rp cc65/include cc65/asminc $@
@@ -78,11 +71,13 @@ $(BUILDDIR)/65-%/fsroot:
 	cp -rp cc65/lib/$** $@/lib/
 	cp -rpf cc65/target/$** $@/target/
 
-cc65.filesystems: \
-	$(FSDIR)/fs65-nes.js $(FSDIR)/fs65-apple2.js $(FSDIR)/fs65-c64.js \
-	$(FSDIR)/fs65-atari.js # $(FSDIR)/fs65-sim6502.js
+cc65.filesystems: $(FSDIR)/fs65-nes.js $(FSDIR)/fs65-apple2.js $(FSDIR)/fs65-c64.js\
+	$(FSDIR)/fs65-atari.js $(FSDIR)/fs65-none.js
 
-cc65: cc65.wasm $(BUILDDIR)/cc65/bin/cc65.wasm $(BUILDDIR)/cc65/bin/ca65.wasm $(BUILDDIR)/cc65/bin/ld65.wasm cc65.filesystems
+cc65: cc65.wasm cc65.filesystems \
+	$(BUILDDIR)/cc65/bin/cc65.wasm \
+	$(BUILDDIR)/cc65/bin/ca65.wasm \
+	$(BUILDDIR)/cc65/bin/ld65.wasm
 
 ### sdcc
 
@@ -125,7 +120,7 @@ sdcc.build:
 	sed -i 's/#define HAVE_BACKTRACE_SYMBOLS_FD 1//g' $(BUILDDIR)/sdcc/sdcc/sdccconf.h
 	# can't generate multiple modules w/ different export names
 	cd $(BUILDDIR)/sdcc/sdcc/src && emmake make EMCC_FLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdcc" LDFLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdcc"
-	cp $(BUILDDIR)/sdcc/sdcc/bin/sdcc* $(WASMDIR)
+	#cp $(BUILDDIR)/sdcc/sdcc/bin/sdcc* $(WASMDIR)
 
 sdcc.fsroot:
 	rm -fr $(BUILDDIR)/sdcc/fsroot
@@ -133,8 +128,8 @@ sdcc.fsroot:
 	ln -s $(CURDIR)/sdcc/sdcc/device/include $(BUILDDIR)/sdcc/fsroot/include
 	ln -s $(CURDIR)/sdcc/sdcc/device/lib/build $(BUILDDIR)/sdcc/fsroot/lib
 
-sdcc: prepare copy.sdcc sdcc.build sdcc.fsroot $(FSDIR)/fssdcc.js \
-$(BUILDDIR)/sdcc/sdcc/bin/sdcc.wasm
+sdcc: prepare copy.sdcc sdcc.build sdcc.fsroot $(FSDIR)/fssdcc.js $(BUILDDIR)/sdcc/sdcc/bin/sdcc.wasm
+	$(EMSDK)/upstream/bin/wasm-opt --strip -Oz $(BUILDDIR)/sdcc/sdcc/bin/sdcc.wasm -o $(WASMDIR)/sdcc.wasm
 
 ### 6809tools
 
