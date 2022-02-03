@@ -122,13 +122,19 @@ sdcc.build:
 	cd $(BUILDDIR)/sdcc/sdcc/src && emmake make EMCC_FLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdcc" LDFLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdcc"
 	#cp $(BUILDDIR)/sdcc/sdcc/bin/sdcc* $(WASMDIR)
 
+sdcc.asm:
+	cd $(BUILDDIR)/sdcc/sdcc/sdas/as6500 && emmake make EMCC_FLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdas6500" LDFLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdas6500"
+
 sdcc.fsroot:
 	rm -fr $(BUILDDIR)/sdcc/fsroot
 	mkdir -p $(BUILDDIR)/sdcc/fsroot
 	ln -s $(CURDIR)/sdcc/sdcc/device/include $(BUILDDIR)/sdcc/fsroot/include
 	ln -s $(CURDIR)/sdcc/sdcc/device/lib/build $(BUILDDIR)/sdcc/fsroot/lib
 
-sdcc: prepare copy.sdcc sdcc.build sdcc.fsroot $(FSDIR)/fssdcc.js $(BUILDDIR)/sdcc/sdcc/bin/sdcc.wasm
+sdcc: prepare copy.sdcc sdcc.build sdcc.asm sdcc.fsroot \
+	$(FSDIR)/fssdcc.js \
+	$(BUILDDIR)/sdcc/sdcc/bin/sdcc.wasm \
+	$(BUILDDIR)/sdcc/sdcc/bin/sdas6500.wasm
 	$(EMSDK)/upstream/bin/wasm-opt --strip -Oz $(BUILDDIR)/sdcc/sdcc/bin/sdcc.wasm -o $(WASMDIR)/sdcc.wasm
 
 ### 6809tools
