@@ -72,7 +72,8 @@ $(BUILDDIR)/65-%/fsroot:
 	cp -rpf cc65/target/$** $@/target/
 
 cc65.filesystems: $(FSDIR)/fs65-nes.js $(FSDIR)/fs65-apple2.js $(FSDIR)/fs65-c64.js\
-	$(FSDIR)/fs65-atari.js $(FSDIR)/fs65-none.js
+	$(FSDIR)/fs65-atari.js $(FSDIR)/fs65-none.js\
+	$(FSDIR)/fs65-vic20.js
 
 cc65: cc65.wasm cc65.filesystems \
 	$(BUILDDIR)/cc65/bin/cc65.wasm \
