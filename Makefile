@@ -11,11 +11,11 @@ ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariB
 .PHONY: clean clobber prepare $(ALLTARGETS)
 
 all: $(ALLTARGETS)
-	emcc -s USE_BOOST_HEADERS=1 -o /tmp/emcctest.out test.c
 
 prepare:
 	mkdir -p $(OUTDIR) $(BUILDDIR) $(OUTPUTDIR) $(FSDIR) $(WASMDIR)
 	@emcc --version || { echo 'Emscripten not found. Install https://github.com/emscripten-core/emsdk first.'; exit 1; }
+	@emcc -s USE_BOOST_HEADERS=1 -o /tmp/emcctest.out test.c
 
 clean:
 	rm -fr $(BUILDDIR)
