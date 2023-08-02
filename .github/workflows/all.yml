@@ -41,8 +41,41 @@ jobs:
           git submodule init
           git submodule update
 
-      - name: Build with Emscripten
-        run: make
+      - name: Build CC65
+        run: make cc65
+        if: success() || failure()
+
+      - name: Build SDCC
+        run: make sdcc
+        if: success() || failure()
+
+      - name: Build 6809tools
+        run: make 6809tools
+        if: success() || failure()
+
+      - name: Build yasm
+        run: make yasm
+        if: success() || failure()
+
+      - name: Build verilator
+        run: make verilator
+        if: success() || failure()
+
+      - name: Build zmac
+        run: make zmac
+        if: success() || failure()
+
+      - name: Build dasm
+        run: make dasm
+        if: success() || failure()
+
+      - name: Build wiz
+        run: make wiz
+        if: success() || failure()
+
+      - name: Build fastbasic
+        run: make fastbasic
+        if: success() || failure()
 
       - name: Move output files
         run: cp -rp output/ ${{ github.workspace }}/output/
