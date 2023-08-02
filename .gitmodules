@@ -1,9 +1,9 @@
 [submodule "cc65"]
 	path = cc65
-	url = git@github.com:cc65/cc65.git
+	url = https://github.com/cc65/cc65.git
 [submodule "neslib"]
 	path = neslib
-	url = git@github.com:sehugg/neslib.git
+	url = https://github.com/sehugg/neslib.git
 [submodule "sdcc-m6502"]
 	path = sdcc
 	url = https://github.com/sehugg/sdcc-m6502
@@ -18,7 +18,7 @@
 	url = https://github.com/sehugg/verilator
 [submodule "zmac"]
 	path = zmac
-	url = git@github.com:sehugg/zmac.git
+	url = https://github.com/sehugg/zmac.git
 
 [submodule "SmallerC"]
 	path = SmallerC
@@ -26,9 +26,6 @@
 [submodule "nesasm"]
 	path = nesasm
 	url = https://github.com/camsaul/nesasm
-[submodule "merlin32"]
-	path = merlin32
-	url = ./merlin32
 [submodule "batariBasic"]
 	path = batariBasic
 	url = https://github.com/sehugg/batariBasic
@@ -53,12 +50,15 @@
 [submodule "Silice"]
 	path = Silice
 	url = https://github.com/sehugg/Silice
-[submodule "wiz"]
-	path = wiz
-	url = ./wiz
 [submodule "armips"]
 	path = armips
 	url = https://github.com/Kingcom/armips
 [submodule "vasm"]
 	path = vasm
-	url = https://github.com/StarWolf3000/vasm-mirror
+	url = https://github.com/mbitsnbites/vasm-mirror
+[submodule "merlin32"]
+	path = merlin32
+	url = https://github.com/apple2accumulator/merlin32
+[submodule "wiz"]
+	path = wiz
+	url = https://github.com/wiz-lang/wiz
