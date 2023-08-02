@@ -1,0 +1,48 @@
+name: Build with Emscripten
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Setup emsdk
+        uses: mymindstorm/setup-emsdk@v11
+        with:
+          # Make sure to set a version number!
+          version: 1.38.40
+          # This is the name of the cache folder.
+          # The cache folder will be placed in the build directory,
+          #  so make sure it doesn't conflict with anything!
+          actions-cache-folder: 'emsdk-cache'
+
+      - name: Verify
+        run: emcc -v
+
+      - name: Install dependencies
+        run: |
+          # Install required dependencies
+          sudo apt-get update
+          sudo apt-get install -y libboost-graph-dev nasm bison flex texinfo zlib1g-dev
+
+      - name: Init submodules
+        run: |
+          # Initialize and update Git submodules
+          git submodule init
+          git submodule update
+
+      - name: Build with Emscripten
+        run: make
+
+      - name: Move output files
+        run: cp -rp output/ ${{ github.workspace }}/output/
