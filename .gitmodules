@@ -6,7 +6,7 @@
 	url = https://github.com/sehugg/neslib.git
 [submodule "sdcc-m6502"]
 	path = sdcc
-	url = https://github.com/sehugg/sdcc-m6502
+	url = https://github.com/rurban/sdcc
 [submodule "6809tools"]
 	path = 6809tools
 	url = https://github.com/sehugg/6809tools
@@ -56,9 +56,9 @@
 [submodule "vasm"]
 	path = vasm
 	url = https://github.com/mbitsnbites/vasm-mirror
-[submodule "merlin32"]
-	path = merlin32
-	url = https://github.com/apple2accumulator/merlin32
 [submodule "wiz"]
 	path = wiz
 	url = https://github.com/wiz-lang/wiz
+[submodule "merlin32"]
+	path = merlin32
+	url = https://github.com/apple2accumulator/merlin32
