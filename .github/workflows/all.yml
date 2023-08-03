@@ -9,7 +9,7 @@ on:
       - master
 
 jobs:
-  build:
+  setup:
     runs-on: ubuntu-latest
 
     steps:
@@ -41,49 +41,71 @@ jobs:
           git submodule init
           git submodule update
 
+  cc65:
+    needs: setup
+    steps:
       - name: Build CC65
         run: make cc65
-        if: success() || failure()
 
+  sdcc:
+    needs: setup
+    steps:
       - name: Build SDCC
         run: make sdcc
-        if: success() || failure()
 
+  tools6809:
+    needs: setup
+    steps:
       - name: Build 6809tools
         run: make 6809tools
-        if: success() || failure()
 
+  verilator:
+    needs: setup
+    steps:
       - name: Build verilator
         run: make verilator
-        if: success() || failure()
 
+  zmac:
+    needs: setup
+    steps:
       - name: Build zmac
         run: make zmac
-        if: success() || failure()
 
+  merlin32:
+    needs: setup
+    steps:
       - name: Build merlin32
         run: make merlin32
-        if: success() || failure()
 
+  c2t:
+    needs: setup
+    steps:
       - name: Build c2t
         run: make c2t
-        if: success() || failure()
 
+  makewav:
+    needs: setup
+    steps:
       - name: Build makewav
         run: make makewav
-        if: success() || failure()
 
+  dasm:
+    needs: setup
+    steps:
       - name: Build dasm
         run: make dasm
-        if: success() || failure()
 
+  wiz:
+    needs: setup
+    steps:
       - name: Build wiz
         run: make wiz
-        if: success() || failure()
 
+  fastbasic:
+    needs: setup
+    steps:
       - name: Build fastbasic
         run: make fastbasic
-        if: success() || failure()
 
-      - name: Move output files
-        run: cp -rp output/ ${{ github.workspace }}/output/
+#      - name: Move output files
+#        run: cp -rp output/ ${{ github.workspace }}/output/
