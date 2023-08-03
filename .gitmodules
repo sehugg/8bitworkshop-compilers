@@ -62,3 +62,6 @@
 [submodule "merlin32"]
 	path = merlin32
 	url = https://github.com/apple2accumulator/merlin32
+[submodule "mkatr"]
+	path = mkatr
+	url = https://github.com/dmsc/mkatr

@@ -141,6 +141,10 @@ sdcc: prepare copy.sdcc sdcc.build sdcc.asm sdcc.fsroot \
 
 ### 6809tools
 
+export PATH := $(CURDIR)/6809tools/lwtools/lwasm:$(PATH)
+export PATH := $(CURDIR)/6809tools/lwtools/lwar:$(PATH)
+export PATH := $(CURDIR)/6809tools/lwtools/lwlink:$(PATH)
+
 6809tools.libs:
 	cd 6809tools/lwtools && make
 	cd 6809tools/cmoc && ./configure && make
@@ -253,6 +257,8 @@ makewav: makewav.wasm $(BUILDDIR)/makewav/makewav.js
 
 ### fastbasic
 
+export PATH := $(CURDIR)/mkatr:$(PATH)
+
 fastbasic.wasm: copy.fastbasic
 	sed -i 's/^CXX=/#CXX=/g' $(BUILDDIR)/fastbasic/Makefile
 	cd $(BUILDDIR)/fastbasic && make build build/gen build/gen/int build/obj/cxx-int build/gen/csynt
@@ -260,6 +266,7 @@ fastbasic.wasm: copy.fastbasic
 		OPTFLAGS="-O3 $(EMCC_FLAGS) -s EXPORT_NAME=fastbasic"
 
 fastbasic.libs:
+	cd mkatr && make && cd ..
 	cd fastbasic && make ASMFLAGS="-I cc65/asminc -D NO_SMCODE"
 
 fastbasic: fastbasic.libs fastbasic.wasm \
