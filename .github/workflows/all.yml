@@ -53,16 +53,28 @@ jobs:
         run: make 6809tools
         if: success() || failure()
 
-      - name: Build yasm
-        run: make yasm
-        if: success() || failure()
-
       - name: Build verilator
         run: make verilator
         if: success() || failure()
 
       - name: Build zmac
         run: make zmac
+        if: success() || failure()
+
+      - name: Build smlrc
+        run: make smlrc
+        if: success() || failure()
+
+      - name: Build merlin32
+        run: make merlin32
+        if: success() || failure()
+
+      - name: Build c2t
+        run: make c2t
+        if: success() || failure()
+
+      - name: Build makewav
+        run: make makewav
         if: success() || failure()
 
       - name: Build dasm

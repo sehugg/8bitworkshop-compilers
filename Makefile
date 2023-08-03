@@ -135,9 +135,9 @@ sdcc.fsroot:
 
 sdcc: prepare copy.sdcc sdcc.build sdcc.asm sdcc.fsroot \
 	$(FSDIR)/fssdcc.js \
-	$(BUILDDIR)/sdcc/sdcc/bin/sdcc.wasm \
+	$(BUILDDIR)/sdcc/sdcc/src/sdcc.wasm \
 	$(BUILDDIR)/sdcc/sdcc/bin/sdas6500.wasm
-	$(EMSDK)/upstream/bin/wasm-opt --strip -Oz $(BUILDDIR)/sdcc/sdcc/bin/sdcc.wasm -o $(WASMDIR)/sdcc.wasm
+	$(EMSDK)/upstream/bin/wasm-opt --strip -Oz $(BUILDDIR)/sdcc/sdcc/src/sdcc.wasm -o $(WASMDIR)/sdcc.wasm
 
 ### 6809tools
 
@@ -163,7 +163,7 @@ $(BUILDDIR)/6809tools/cmoc/src/cmoc.wasm
 ### yasm
 
 yasm.libs:
-	cd yasm && sh autogen.sh && ./configure && autoreconf -ivf && make
+	cd yasm && sh autogen.sh && ./configure && make
 
 yasm.wasm: copy.yasm
 	cd $(BUILDDIR)/yasm && sh autogen.sh && autoreconf -ivf && emconfigure ./configure --prefix=/share
