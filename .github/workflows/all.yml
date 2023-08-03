@@ -41,22 +41,6 @@ jobs:
           git submodule init
           git submodule update
 
-      - name: Build CC65
-        run: make cc65
-        if: success() || failure()
-
-      - name: Build SDCC
-        run: make sdcc
-        if: success() || failure()
-
-      - name: Build 6809tools
-        run: make 6809tools
-        if: success() || failure()
-
-      - name: Build verilator
-        run: make verilator
-        if: success() || failure()
-
       - name: Build zmac
         run: make zmac
         if: success() || failure()
@@ -85,5 +69,25 @@ jobs:
         run: make fastbasic
         if: success() || failure()
 
-      - name: Move output files
-        run: cp -rp output/ ${{ github.workspace }}/output/
+      - name: Build CC65
+        run: make cc65
+        if: success() || failure()
+
+      - name: Build 6809tools
+        run: make 6809tools
+        if: success() || failure()
+
+      - name: Build verilator
+        run: make verilator
+        if: success() || failure()
+
+      - name: Build SDCC
+        run: make sdcc
+        if: success() || failure()
+
+      - name: Publish Artifacts
+        uses: actions/upload-artifact@v2
+        if: success() || failure()
+        with:
+          name: build_artifacts
+          path: output/
