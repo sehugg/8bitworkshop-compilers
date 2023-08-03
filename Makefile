@@ -147,7 +147,7 @@ export PATH := $(CURDIR)/6809tools/lwtools/lwlink:$(PATH)
 
 6809tools.libs:
 	cd 6809tools/lwtools && make
-	cd 6809tools/cmoc && ./configure && make
+	cd 6809tools/cmoc && ./configure && autoreconf -ivf && make
 
 6809tools.wasm: copy.6809tools
 	cd $(BUILDDIR)/6809tools/lwtools && emmake make lwasm EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwasm"
@@ -163,10 +163,10 @@ $(BUILDDIR)/6809tools/cmoc/src/cmoc.wasm
 ### yasm
 
 yasm.libs:
-	cd yasm && sh autogen.sh && ./configure && make
+	cd yasm && sh autogen.sh && ./configure && autoreconf -ivf && make
 
 yasm.wasm: copy.yasm
-	cd $(BUILDDIR)/yasm && sh autogen.sh && emconfigure ./configure --prefix=/share
+	cd $(BUILDDIR)/yasm && sh autogen.sh && autoreconf -ivf && emconfigure ./configure --prefix=/share
 	cd yasm && cp --preserve=mode genperf* gp-* re2c* genmacro* genversion* genstring* genmodule* $(BUILDDIR)/yasm/
 	cd $(BUILDDIR)/yasm && emmake make yasm EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=yasm"
 
