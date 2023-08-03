@@ -43,12 +43,14 @@ jobs:
 
   cc65:
     needs: setup
+    runs-on: ubuntu-latest
     steps:
       - name: Build CC65
         run: make cc65
 
   sdcc:
     needs: setup
+    runs-on: ubuntu-latest
     steps:
       - name: Build SDCC
         run: make sdcc
@@ -61,48 +63,56 @@ jobs:
 
   verilator:
     needs: setup
+    runs-on: ubuntu-latest
     steps:
       - name: Build verilator
         run: make verilator
 
   zmac:
     needs: setup
+    runs-on: ubuntu-latest
     steps:
       - name: Build zmac
         run: make zmac
 
   merlin32:
     needs: setup
+    runs-on: ubuntu-latest
     steps:
       - name: Build merlin32
         run: make merlin32
 
   c2t:
     needs: setup
+    runs-on: ubuntu-latest
     steps:
       - name: Build c2t
         run: make c2t
 
   makewav:
     needs: setup
+    runs-on: ubuntu-latest
     steps:
       - name: Build makewav
         run: make makewav
 
   dasm:
     needs: setup
+    runs-on: ubuntu-latest
     steps:
       - name: Build dasm
         run: make dasm
 
   wiz:
     needs: setup
+    runs-on: ubuntu-latest
     steps:
       - name: Build wiz
         run: make wiz
 
   fastbasic:
     needs: setup
+    runs-on: ubuntu-latest
     steps:
       - name: Build fastbasic
         run: make fastbasic
