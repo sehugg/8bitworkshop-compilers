@@ -61,10 +61,6 @@ jobs:
         run: make zmac
         if: success() || failure()
 
-      - name: Build smlrc
-        run: make smlrc
-        if: success() || failure()
-
       - name: Build merlin32
         run: make merlin32
         if: success() || failure()

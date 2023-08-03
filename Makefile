@@ -175,10 +175,10 @@ yasm: yasm.libs yasm.wasm $(BUILDDIR)/yasm/yasm.wasm
 ### verilator
 
 verilator.libs:
-	cd verilator && autoconf && ./configure && make -j 4
+	cd verilator && autoconf && ./configure && make
 
 verilator.update:
-	cd $(BUILDDIR)/verilator/src && emmake make -j 4 ../bin/verilator_bin EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=verilator_bin -s INITIAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1"
+	cd $(BUILDDIR)/verilator/src && emmake make ../bin/verilator_bin EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=verilator_bin -s INITIAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1"
 
 verilator.prepare: copy.verilator
 	cd $(BUILDDIR)/verilator && autoconf && emconfigure ./configure --prefix=/share
