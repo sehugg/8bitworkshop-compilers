@@ -57,6 +57,7 @@ jobs:
 
   tools6809:
     needs: setup
+    runs-on: ubuntu-latest
     steps:
       - name: Build 6809tools
         run: make 6809tools
