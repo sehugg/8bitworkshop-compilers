@@ -115,13 +115,13 @@ SDCC_FLAGS= \
 	-s ERROR_ON_UNDEFINED_SYMBOLS=0
 
 sdcc.build:
-	cd sdcc/sdcc && ./configure $(SDCC_CONFIG) && make -j 4
-	cd $(BUILDDIR)/sdcc/sdcc/support/sdbinutils && ./configure && make -j 4
+	cd sdcc/sdcc && ./configure $(SDCC_CONFIG) && make
+	cd $(BUILDDIR)/sdcc/sdcc/support/sdbinutils && ./configure && make
 	cp -rp sdcc/sdcc/bin/makebin $(BUILDDIR)/sdcc/sdcc/bin/
 	cd $(BUILDDIR)/sdcc/sdcc && emconfigure ./configure $(SDCC_CONFIG) $(SDCC_EMCC_CONFIG) EMCC_FLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS)"
 	sed -i 's/#define HAVE_BACKTRACE_SYMBOLS_FD 1//g' $(BUILDDIR)/sdcc/sdcc/sdccconf.h
 	# can't generate multiple modules w/ different export names
-	cd $(BUILDDIR)/sdcc/sdcc/src && emmake make -j 4 EMCC_FLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdcc" LDFLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdcc"
+	cd $(BUILDDIR)/sdcc/sdcc/src && emmake make EMCC_FLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdcc" LDFLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdcc"
 	#cp $(BUILDDIR)/sdcc/sdcc/bin/sdcc* $(WASMDIR)
 
 sdcc.asm:
