@@ -35,20 +35,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential libboost-graph-dev nasm flex texinfo zlib1g-dev
 
-      # Download the Bison .deb package from the provided URL
-      - name: Download Bison 3.5 Package
-        run: |
-          wget https://ubuntu.pkgs.org/20.04/ubuntu-main-arm64/bison_3.5.1+dfsg-1_arm64.deb
-          
-      # Install the Bison package using dpkg
       - name: Install Bison 3.5
         run: |
-          sudo dpkg -i bison_3.5.1+dfsg-1_arm64.deb
-          sudo apt-get -f install
-          
-      # Check Bison version after installation
-      - name: Verify Bison Version
-        run: bison --version
+          sudo apt-get install -y bison=3.5.1+dfsg-1
+          bison --version
         
       - name: Init submodules
         run: |
