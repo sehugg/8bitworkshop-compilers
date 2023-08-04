@@ -33,7 +33,7 @@ jobs:
         run: |
           # Install required dependencies
           sudo apt-get update
-          sudo apt-get install -y build-essential libboost-graph-dev nasm flex bison texinfo zlib1g-dev ccache
+          sudo apt-get install -y build-essential libboost-graph-dev nasm flex bison texinfo zlib1g-dev ccache libfl-dev
 
       - name: Init submodules
         run: |
