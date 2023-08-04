@@ -26,20 +26,15 @@ jobs:
           #  so make sure it doesn't conflict with anything!
           actions-cache-folder: 'emsdk-cache'
 
-      - name: Verify
+      - name: Verify emsdk
         run: emcc -v
 
       - name: Install dependencies
         run: |
           # Install required dependencies
           sudo apt-get update
-          sudo apt-get install -y build-essential libboost-graph-dev nasm flex texinfo zlib1g-dev
+          sudo apt-get install -y build-essential libboost-graph-dev nasm flex bison texinfo zlib1g-dev
 
-      - name: Install Bison 3.5
-        run: |
-          sudo apt-get install -y bison=3.5.1+dfsg-1
-          bison --version
-        
       - name: Init submodules
         run: |
           # Initialize and update Git submodules
