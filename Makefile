@@ -56,10 +56,10 @@ EMCC_FLAGS= -Os \
 
 cc65.wasm: copy.cc65
 	mkdir -p cc65/target/none
-	cd cc65 && make
-	cd $(BUILDDIR)/cc65 && emmake make cc65 CC=emcc EXE_SUFFIX= LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=cc65"
-	cd $(BUILDDIR)/cc65 && emmake make ca65 CC=emcc EXE_SUFFIX= LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ca65"
-	cd $(BUILDDIR)/cc65 && emmake make ld65 CC=emcc EXE_SUFFIX= LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ld65"
+	cd cc65 && make -j 4
+	cd $(BUILDDIR)/cc65 && emmake make -j 4 cc65 CC=emcc EXE_SUFFIX= LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=cc65"
+	cd $(BUILDDIR)/cc65 && emmake make -j 4 ca65 CC=emcc EXE_SUFFIX= LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ca65"
+	cd $(BUILDDIR)/cc65 && emmake make -j 4 ld65 CC=emcc EXE_SUFFIX= LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ld65"
 
 $(FSDIR)/fs65-%.js:
 	cd cc65 && $(FILE_PACKAGER) $(FSDIR)/fs65-$*.data --separate-metadata --js-output=$@ \
@@ -115,13 +115,13 @@ SDCC_FLAGS= \
 	-s ERROR_ON_UNDEFINED_SYMBOLS=0
 
 sdcc.build:
-	cd sdcc/sdcc && ./configure $(SDCC_CONFIG) && make
-	cd $(BUILDDIR)/sdcc/sdcc/support/sdbinutils && ./configure && make
+	cd sdcc/sdcc && ./configure $(SDCC_CONFIG) && make -j 4
+	cd $(BUILDDIR)/sdcc/sdcc/support/sdbinutils && ./configure && make -j 4
 	cp -rp sdcc/sdcc/bin/makebin $(BUILDDIR)/sdcc/sdcc/bin/
 	cd $(BUILDDIR)/sdcc/sdcc && emconfigure ./configure $(SDCC_CONFIG) $(SDCC_EMCC_CONFIG) EMCC_FLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS)"
 	sed -i 's/#define HAVE_BACKTRACE_SYMBOLS_FD 1//g' $(BUILDDIR)/sdcc/sdcc/sdccconf.h
 	# can't generate multiple modules w/ different export names
-	cd $(BUILDDIR)/sdcc/sdcc/src && emmake make EMCC_FLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdcc" LDFLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdcc"
+	cd $(BUILDDIR)/sdcc/sdcc/src && emmake make -j 4 EMCC_FLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdcc" LDFLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdcc"
 	#cp $(BUILDDIR)/sdcc/sdcc/bin/sdcc* $(WASMDIR)
 
 sdcc.asm:
@@ -146,14 +146,14 @@ export PATH := $(CURDIR)/6809tools/lwtools/lwar:$(PATH)
 export PATH := $(CURDIR)/6809tools/lwtools/lwlink:$(PATH)
 
 6809tools.libs:
-	cd 6809tools/lwtools && make
-	cd 6809tools/cmoc && ./configure && autoreconf -ivf && make
+	cd 6809tools/lwtools && make -j 4
+	cd 6809tools/cmoc && ./configure && autoreconf -ivf && make -j 4
 
 6809tools.wasm: copy.6809tools
-	cd $(BUILDDIR)/6809tools/lwtools && emmake make lwasm EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwasm"
-	cd $(BUILDDIR)/6809tools/lwtools && emmake make lwlink EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwlink"
+	cd $(BUILDDIR)/6809tools/lwtools && emmake make -j 4 lwasm EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwasm"
+	cd $(BUILDDIR)/6809tools/lwtools && emmake make -j 4 lwlink EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=lwlink"
 	cd $(BUILDDIR)/6809tools/cmoc && emconfigure ./configure --prefix=/share EMCC_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0"
-	cd $(BUILDDIR)/6809tools/cmoc/src && emmake make cmoc EMCC_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=cmoc"
+	cd $(BUILDDIR)/6809tools/cmoc/src && emmake make -j 4 cmoc EMCC_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=cmoc"
 
 6809tools: 6809tools.libs 6809tools.wasm \
 $(BUILDDIR)/6809tools/lwtools/lwasm/lwasm.wasm \
@@ -175,10 +175,11 @@ yasm: yasm.libs yasm.wasm $(BUILDDIR)/yasm/yasm.wasm
 ### verilator
 
 verilator.libs:
-	cd verilator && autoconf && ./configure && make
+	cp /usr/include/FlexLexer.h ./verilator/include
+	cd verilator && autoconf && ./configure && make -j 4
 
 verilator.update:
-	cd $(BUILDDIR)/verilator/src && emmake make ../bin/verilator_bin EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=verilator_bin -s INITIAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1"
+	cd $(BUILDDIR)/verilator/src && emmake make -j 4 ../bin/verilator_bin EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=verilator_bin -s INITIAL_MEMORY=67108864 -s ALLOW_MEMORY_GROWTH=1"
 
 verilator.prepare: copy.verilator
 	cd $(BUILDDIR)/verilator && autoconf && emconfigure ./configure --prefix=/share

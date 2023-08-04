@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout Repository
@@ -33,7 +33,7 @@ jobs:
         run: |
           # Install required dependencies
           sudo apt-get update
-          sudo apt-get install -y build-essential libboost-graph-dev nasm flex bison texinfo zlib1g-dev
+          sudo apt-get install -y build-essential libboost-graph-dev nasm flex bison texinfo zlib1g-dev ccache
 
       - name: Init submodules
         run: |
