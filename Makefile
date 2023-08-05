@@ -277,7 +277,7 @@ fastbasic: fastbasic.libs fastbasic.wasm \
 ### DASM
 
 dasm.wasm: copy.dasm
-	cd $(BUILDDIR)/dasm/src && emmake make dasm CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=dasm"
+	cd $(BUILDDIR)/dasm/src && emmake make -j 4 dasm CC="emcc $(EMCC_FLAGS) -s EXPORT_NAME=dasm"
 
 dasm: dasm.wasm $(BUILDDIR)/dasm/src/dasm.wasm
 

@@ -89,5 +89,5 @@ jobs:
         uses: actions/upload-artifact@v2
         if: success() || failure()
         with:
-          name: build_artifacts
+          name: compilers_wasm_js_fs
           path: output/
