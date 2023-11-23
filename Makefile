@@ -74,7 +74,8 @@ $(BUILDDIR)/65-%/fsroot:
 
 cc65.filesystems: $(FSDIR)/fs65-nes.js $(FSDIR)/fs65-apple2.js $(FSDIR)/fs65-c64.js\
 	$(FSDIR)/fs65-atari.js $(FSDIR)/fs65-none.js\
-	$(FSDIR)/fs65-vic20.js
+	$(FSDIR)/fs65-vic20.js $(FSDIR)/fs65-atari2600.js \
+	$(FSDIR)/fs65-pce.js
 
 cc65: cc65.wasm cc65.filesystems \
 	$(BUILDDIR)/cc65/bin/cc65.wasm \
@@ -348,4 +349,12 @@ vasm.wasm: copy.vasm
 	cd $(BUILDDIR)/vasm && emmake make CPU=arm SYNTAX=std EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=vasm"
 
 vasm: vasm.wasm $(BUILDDIR)/vasm/vasmarm_std.wasm
+
+## acme
+
+acme.wasm: copy.acme
+	sed -i 's/gcc/emcc /g' $(BUILDDIR)/acme/src/Makefile
+	cd $(BUILDDIR)/acme/src && emmake make EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=acme"
+
+acme: acme.wasm $(BUILDDIR)/acme/src/acme.wasm
 

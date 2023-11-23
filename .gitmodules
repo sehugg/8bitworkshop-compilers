@@ -65,3 +65,6 @@
 [submodule "mkatr"]
 	path = mkatr
 	url = https://github.com/dmsc/mkatr
+[submodule "acme"]
+	path = acme
+	url = ./acme
