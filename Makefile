@@ -358,3 +358,18 @@ acme.wasm: copy.acme
 
 acme: acme.wasm $(BUILDDIR)/acme/src/acme.wasm
 
+## tcc
+
+tinycc.build:
+	cd tinycc && ./configure && make cross-arm
+
+tinycc.wasm: copy.tinycc
+	cd $(BUILDDIR)/tinycc && emconfigure ./configure --cpu=i386 #--cross-prefix=$(CURDIR)/tinycc
+	cd $(BUILDDIR)/tinycc && emmake make EXESUF=.js tccdefs_.h arm-tcc.js LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=armtcc"
+
+tinycc.fsroot:
+	rm -fr $(BUILDDIR)/tinycc/fsroot
+	mkdir -p $(BUILDDIR)/tinycc/fsroot
+	cp -pv tinycc/*.o tinycc/*.a $(BUILDDIR)/tinycc/fsroot
+
+tinycc: tinycc.build tinycc.wasm tinycc.fsroot $(BUILDDIR)/tinycc/arm-tcc.wasm

@@ -68,3 +68,6 @@
 [submodule "acme"]
 	path = acme
 	url = ./acme
+[submodule "tinycc"]
+	path = tinycc
+	url = ./tinycc
