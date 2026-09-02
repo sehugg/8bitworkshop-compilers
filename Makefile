@@ -16,9 +16,9 @@ WASI_CFLAGS = --sysroot=$(WASI_SYSROOT)
 
 ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t makewav fastbasic dasm Silice wiz
 
-.PHONY: clean clobber prepare $(ALLTARGETS) test test.acme
+.PHONY: clean clobber prepare $(ALLTARGETS) test test.acme test.dasm
 
-test: test.acme
+test: test.acme test.dasm
 	@echo 'All tests passed.'
 
 all: $(ALLTARGETS)
@@ -50,6 +50,12 @@ $(FSDIR)/fs%.js: $(BUILDDIR)/%/fsroot
 		--preload * \
 		--separate-metadata \
 		--js-output=$@
+
+# WASI filesystems: zip up fsroot; contents unpack at the WASI root dir.
+# Naming matches the IDE convention (src/worker/fs/<tool>-fs.zip).
+# Only tools that ship runtime data (headers/libs) get a fsroot, e.g. sdcc, cc65.
+$(FSDIR)/%-fs.zip: $(BUILDDIR)/%/fsroot
+	cd $< && zip -qr $@ .
 
 %.js: %
 	sed -r 's/(return \w+)[.]ready/\1;\/\/.ready/' < $< > $@
@@ -284,12 +290,15 @@ fastbasic: fastbasic.libs fastbasic.wasm \
 	$(BUILDDIR)/fastbasic/build/bin/fastbasic-int.wasm \
 	$(BUILDDIR)/fastbasic/build/bin/fastbasic-fp.wasm
 
-### DASM
+### dasm (WASI)
 
-dasm.wasm: copy.dasm
-	cd $(BUILDDIR)/dasm/src && emmake make -j 4 dasm CC="emcc $(EMCC_FLAGS) -s EXPORT_NAME=dasm"
+dasm.wasi: copy.dasm
+	cd $(BUILDDIR)/dasm/src && PATH="$(WASI_SDK)/bin:$$PATH" \
+		make -j 4 dasm CC="$(WASI_CC) $(WASI_CFLAGS)" CFLAGS="-O2 -std=c99"
+	cp $(BUILDDIR)/dasm/src/dasm $(BUILDDIR)/dasm/src/dasm.wasm
 
-dasm: dasm.wasm $(BUILDDIR)/dasm/src/dasm.wasm
+dasm: dasm.wasi
+	cp $(BUILDDIR)/dasm/src/dasm.wasm $(WASMDIR)/dasm.wasm
 
 ### naken_asm
 
@@ -378,6 +387,13 @@ test.acme: acme
 	cd $(BUILDDIR)/test-acme && $(WASIRUN) --dir=. acme.wasm -o 6502.prg 6502.a
 	cmp tests/acme/6502.expected $(BUILDDIR)/test-acme/6502.prg
 	@echo 'test.acme OK'
+
+test.dasm: dasm
+	rm -fr $(BUILDDIR)/test-dasm && mkdir -p $(BUILDDIR)/test-dasm
+	cp $(WASMDIR)/dasm.wasm tests/dasm/*.asm $(BUILDDIR)/test-dasm/
+	cd $(BUILDDIR)/test-dasm && $(WASIRUN) --dir=. dasm.wasm test.asm -otest.bin -ltest.lst
+	cmp tests/dasm/test.expected $(BUILDDIR)/test-dasm/test.bin
+	@echo 'test.dasm OK'
 
 ## tcc
 

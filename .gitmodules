@@ -43,7 +43,7 @@
 	url = https://github.com/dmsc/fastbasic
 [submodule "dasm"]
 	path = dasm
-	url = https://github.com/sehugg/dasm
+	url = https://github.com/dasm-assembler/dasm.git
 [submodule "naken_asm"]
 	path = naken_asm
 	url = https://github.com/mikeakohn/naken_asm

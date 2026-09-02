@@ -1,0 +1,7 @@
+; Simple 6502 test for ACME (WASI build)
+; Expected output: a9 01 8d 20 d0 4c 06 08
+
+        * = $0801
+        lda #$01
+        sta $d020
+loop    jmp loop
