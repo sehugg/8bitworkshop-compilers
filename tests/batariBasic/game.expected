@@ -1,0 +1,5 @@
+game
+       echo "    ",[(scoretable - *)]d , "bytes of ROM space left")
+ 
+ 
+ 

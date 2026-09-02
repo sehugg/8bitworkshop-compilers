@@ -21,9 +21,12 @@ NEW_CONFIG_GUESS = $(shell ls /opt/homebrew/share/automake-*/config.guess /usr/s
 
 ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t makewav fastbasic dasm Silice wiz
 
-.PHONY: clean clobber prepare $(ALLTARGETS) test test.acme test.dasm test.yasm test.vasm test.zmac test.naken_asm
+.PHONY: clean clobber prepare $(ALLTARGETS) test test.acme test.dasm test.yasm \
+	test.vasm test.zmac test.naken_asm test.c2t test.makewav test.merlin32 \
+	test.batariBasic test.smlrc
 
-test: test.acme test.dasm test.yasm test.vasm test.zmac test.naken_asm
+test: test.acme test.dasm test.yasm test.vasm test.zmac test.naken_asm \
+	test.c2t test.makewav test.merlin32 test.batariBasic test.smlrc
 	@echo 'All tests passed.'
 
 all: $(ALLTARGETS)
@@ -229,24 +232,23 @@ zmac.wasi: copy.zmac
 zmac: zmac.wasi
 	cp $(BUILDDIR)/zmac/zmac.wasm $(WASMDIR)/zmac.wasm
 
-### smlrc
+### smlrc (WASI)
+# SmallerC core compiler; include/lib runtime data packaged as fs zip
 
-# requires nasm
-smlrc.libs:
-	cd SmallerC && make
-
-smlrc.wasm: copy.SmallerC
-	sed -i 's/^CC = /#CC =/g' $(BUILDDIR)/SmallerC/common.mk 
-	cd $(BUILDDIR)/SmallerC && emmake make smlrc EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=smlrc"
+smlrc.wasi: copy.SmallerC
+	cd $(BUILDDIR)/SmallerC && PATH="$(WASI_SDK)/bin:$$PATH" \
+		make smlrc CC="$(WASI_CC) $(WASI_CFLAGS)" CFLAGS="-O2 -DPATH_PREFIX=\"/share\""
+	cp $(BUILDDIR)/SmallerC/smlrc $(BUILDDIR)/SmallerC/smlrc.wasm
 
 smlrc.fsroot:
 	rm -fr $(BUILDDIR)/smlrc/fsroot
-	mkdir -p $(BUILDDIR)/smlrc/fsroot
-	ln -s $(CURDIR)/SmallerC/v0100/include $(BUILDDIR)/smlrc/fsroot/include
-	ln -s $(CURDIR)/SmallerC/v0100/lib $(BUILDDIR)/smlrc/fsroot/lib
-	rm -f $(BUILDDIR)/smlrc/fsroot/lib/lc?.a # remove non-DOS libs
+	mkdir -p $(BUILDDIR)/smlrc/fsroot/include $(BUILDDIR)/smlrc/fsroot/lib
+	cp -rL SmallerC/v0100/include/. $(BUILDDIR)/smlrc/fsroot/include/
+	cp -rL SmallerC/v0100/lib/. $(BUILDDIR)/smlrc/fsroot/lib/
+	rm -f $(BUILDDIR)/smlrc/fsroot/lib/lc?.a $(BUILDDIR)/smlrc/fsroot/lib/*.exe
 
-smlrc: smlrc.libs smlrc.wasm $(BUILDDIR)/SmallerC/smlrc.wasm smlrc.fsroot $(FSDIR)/fssmlrc.js
+smlrc: smlrc.wasi smlrc.fsroot $(FSDIR)/smlrc-fs.zip
+	cp $(BUILDDIR)/SmallerC/smlrc.wasm $(WASMDIR)/smlrc.wasm
 
 ### nesasm
 
@@ -256,36 +258,56 @@ nesasm.wasm: copy.nesasm
 
 nesasm: nesasm.wasm $(BUILDDIR)/nesasm/nesasm.wasm
 
-### merlin32
+### c2t (WASI)
+# c2t.h ships pre-generated in the submodule (loader code, built with cl65);
+# do NOT regenerate it, the host toolchain may not assemble it cleanly
 
-merlin32.wasm: copy.merlin32
-	#sed -i 's/^CC/#CC/g' $(BUILDDIR)/merlin32/Source/Makefile
-	cd $(BUILDDIR)/merlin32/Source && emmake make EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=merlin32"
+c2t.wasi: copy.c2t
+	cd $(BUILDDIR)/c2t && mkdir -p bin && \
+		$(WASI_CC) $(WASI_CFLAGS) -Wall -I. -O3 -o bin/c2t.wasm c2t.c -lm
 
-merlin32: merlin32.wasm $(BUILDDIR)/merlin32/Source/merlin32.wasm
+c2t: c2t.wasi
+	cp $(BUILDDIR)/c2t/bin/c2t.wasm $(WASMDIR)/c2t.wasm
 
-### batariBasic
+### makewav (WASI)
 
-batariBasic.wasm: copy.batariBasic
-	cd $(BUILDDIR)/batariBasic/source && emmake make EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=batariBasic"
+makewav.wasi: copy.makewav
+	cd $(BUILDDIR)/makewav && PATH="$(WASI_SDK)/bin:$$PATH" make makewav \
+		CC="$(WASI_CC) $(WASI_CFLAGS)" CFLAGS="-O3" LDFLAGS=""
+	cp $(BUILDDIR)/makewav/makewav $(BUILDDIR)/makewav/makewav.wasm
 
-batariBasic: batariBasic.wasm $(BUILDDIR)/batariBasic/source/2600basic.wasm
+makewav: makewav.wasi
+	cp $(BUILDDIR)/makewav/makewav.wasm $(WASMDIR)/makewav.wasm
 
-### c2t
+### merlin32 (WASI)
+# setjmp/longjmp needs wasm exception handling; libsetjmp supplies
+# __wasm_longjmp. GNUmakefile is patched rather than CFLAGS-overridden
+# because its -DMACRO_DIR quoting only survives inside the recipe
 
-c2t.wasm: copy.c2t
-	sed -i 's/gcc /emcc $(EMCC_FLAGS) /g' $(BUILDDIR)/c2t/Makefile
-	cd $(BUILDDIR)/c2t && emmake make EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=c2t -s WASM=0"
+merlin32.wasi: copy.merlin32
+	sed -i.bak 's/CFLAGS+=-O3 -Wall -DMACRO_DIR/CFLAGS+=-O3 -Wall -mllvm -wasm-enable-sjlj -mllvm -wasm-use-legacy-eh=false -DMACRO_DIR/' \
+		$(BUILDDIR)/merlin32/Source/GNUmakefile
+	sed -i.bak 's|\$$(CC) \$$(OBJECTS) -o \$$@|$(CC) $(OBJECTS) -o $$@ -lsetjmp|' \
+		$(BUILDDIR)/merlin32/Source/GNUmakefile
+	cd $(BUILDDIR)/merlin32/Source && PATH="$(WASI_SDK)/bin:$$PATH" \
+		make -f GNUmakefile CC="$(WASI_CC) $(WASI_CFLAGS) -mllvm -wasm-enable-sjlj -mllvm -wasm-use-legacy-eh=false"
+	cp $(BUILDDIR)/merlin32/Source/merlin32 $(BUILDDIR)/merlin32/Source/merlin32.wasm
 
-c2t: c2t.wasm $(BUILDDIR)/c2t/bin/c2t.js
+merlin32: merlin32.wasi
+	cp $(BUILDDIR)/merlin32/Source/merlin32.wasm $(WASMDIR)/merlin32.wasm
 
-### makewav
-### TODO: asm.js only
+### batariBasic (WASI)
+# needs flex on the host; all 4 pipeline tools are built
 
-makewav.wasm: copy.makewav
-	cd $(BUILDDIR)/makewav && emmake make makewav CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=makewav -s WASM=0"
+batariBasic.wasi: copy.batariBasic
+	cd $(BUILDDIR)/batariBasic/source && PATH="$(WASI_SDK)/bin:$$PATH" \
+		make all CC="$(WASI_CC) $(WASI_CFLAGS)" CFLAGS="-O2"
 
-makewav: makewav.wasm $(BUILDDIR)/makewav/makewav.js
+batariBasic: batariBasic.wasi
+	cp $(BUILDDIR)/batariBasic/source/2600basic $(WASMDIR)/2600basic.wasm
+	cp $(BUILDDIR)/batariBasic/source/preprocess $(WASMDIR)/preprocess.wasm
+	cp $(BUILDDIR)/batariBasic/source/postprocess $(WASMDIR)/postprocess.wasm
+	cp $(BUILDDIR)/batariBasic/source/optimize $(WASMDIR)/optimize.wasm
 
 ### liblzg
 ### TODO
@@ -455,6 +477,43 @@ test.naken_asm: naken_asm
 	cd $(BUILDDIR)/test-naken_asm && $(WASIRUN) --dir=. naken_asm.wasm -o test.bin test.asm
 	cmp tests/naken_asm/test.expected $(BUILDDIR)/test-naken_asm/test.bin
 	@echo 'test.naken_asm OK'
+
+test.c2t: c2t
+	rm -fr $(BUILDDIR)/test-c2t && mkdir -p $(BUILDDIR)/test-c2t
+	cp $(WASMDIR)/c2t.wasm tests/c2t/* $(BUILDDIR)/test-c2t/
+	cd $(BUILDDIR)/test-c2t && $(WASIRUN) --dir=. c2t.wasm -2 test.mon test.wav
+	cmp tests/c2t/test.expected $(BUILDDIR)/test-c2t/test.wav
+	@echo 'test.c2t OK'
+
+test.makewav: makewav
+	rm -fr $(BUILDDIR)/test-makewav && mkdir -p $(BUILDDIR)/test-makewav
+	cp $(WASMDIR)/makewav.wasm tests/makewav/* $(BUILDDIR)/test-makewav/
+	cd $(BUILDDIR)/test-makewav && $(WASIRUN) --dir=. makewav.wasm -b2K test.bin
+	cmp tests/makewav/test.expected $(BUILDDIR)/test-makewav/test.wav
+	@echo 'test.makewav OK'
+
+test.merlin32: merlin32
+	rm -fr $(BUILDDIR)/test-merlin32 && mkdir -p $(BUILDDIR)/test-merlin32
+	cp $(WASMDIR)/merlin32.wasm tests/merlin32/*.s $(BUILDDIR)/test-merlin32/
+	cd $(BUILDDIR)/test-merlin32 && $(WASIRUN) --dir=. merlin32.wasm test.s
+	cmp tests/merlin32/test.expected $(BUILDDIR)/test-merlin32/test
+	@echo 'test.merlin32 OK'
+
+test.batariBasic: batariBasic
+	rm -fr $(BUILDDIR)/test-batariBasic && mkdir -p $(BUILDDIR)/test-batariBasic
+	cp $(WASMDIR)/2600basic.wasm $(WASMDIR)/preprocess.wasm tests/batariBasic/* $(BUILDDIR)/test-batariBasic/
+	cp -r batariBasic/includes $(BUILDDIR)/test-batariBasic/
+	cd $(BUILDDIR)/test-batariBasic && $(WASIRUN) --dir=. preprocess.wasm test.bas | \
+		$(WASIRUN) --dir=. 2600basic.wasm > game
+	cmp tests/batariBasic/game.expected $(BUILDDIR)/test-batariBasic/game
+	@echo 'test.batariBasic OK'
+
+test.smlrc: smlrc
+	rm -fr $(BUILDDIR)/test-smlrc && mkdir -p $(BUILDDIR)/test-smlrc
+	cp $(WASMDIR)/smlrc.wasm tests/smlrc/*.c $(BUILDDIR)/test-smlrc/
+	cd $(BUILDDIR)/test-smlrc && $(WASIRUN) --dir=. smlrc.wasm -seg32 test.c test.asm
+	cmp tests/smlrc/test.expected $(BUILDDIR)/test-smlrc/test.asm
+	@echo 'test.smlrc OK'
 
 ## tcc
 
