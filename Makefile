@@ -14,11 +14,16 @@ WASI_STRIP = $(WASI_SDK)/bin/strip
 WASI_SYSROOT = $(WASI_SDK)/share/wasi-sysroot
 WASI_CFLAGS = --sysroot=$(WASI_SYSROOT)
 
+# automake >= 1.17 ships a config.sub that knows wasm32-wasi; yasm's bundled
+# copy is too old. Found at build time, used by yasm.wasi.
+NEW_CONFIG_SUB = $(shell ls /opt/homebrew/share/automake-*/config.sub /usr/share/automake-*/config.sub 2>/dev/null | tail -1)
+NEW_CONFIG_GUESS = $(shell ls /opt/homebrew/share/automake-*/config.guess /usr/share/automake-*/config.guess 2>/dev/null | tail -1)
+
 ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t makewav fastbasic dasm Silice wiz
 
-.PHONY: clean clobber prepare $(ALLTARGETS) test test.acme test.dasm
+.PHONY: clean clobber prepare $(ALLTARGETS) test test.acme test.dasm test.yasm
 
-test: test.acme test.dasm
+test: test.acme test.dasm test.yasm
 	@echo 'All tests passed.'
 
 all: $(ALLTARGETS)
@@ -176,17 +181,22 @@ $(BUILDDIR)/6809tools/lwtools/lwasm/lwasm.wasm \
 $(BUILDDIR)/6809tools/lwtools/lwlink/lwlink.wasm \
 $(BUILDDIR)/6809tools/cmoc/src/cmoc.wasm
 
-### yasm
+### yasm (WASI)
+# build machine needs re2c, bison, autoconf/automake; native build tools
+# (genmodule etc.) are rebuilt via CC_FOR_BUILD=cc using cross-compile detection
 
-yasm.libs:
-	cd yasm && sh autogen.sh && ./configure && make
+yasm.wasi: copy.yasm
+	cd $(BUILDDIR)/yasm && sh autogen.sh && autoreconf -ivf
+	[ -n "$(NEW_CONFIG_SUB)" ] && cp $(NEW_CONFIG_SUB) $(NEW_CONFIG_GUESS) $(BUILDDIR)/yasm/config/ || true
+	cd $(BUILDDIR)/yasm && ./configure CC="$(WASI_CC) $(WASI_CFLAGS)" \
+		CFLAGS="-std=c99 -O2 -D_GNU_SOURCE" --host=wasm32-wasi
+	sed -i.bak 's|tmpfile()|fopen("yasm-dbg.out", "w+")|' \
+		$(BUILDDIR)/yasm/modules/objfmts/dbg/dbg-objfmt.c
+	cd $(BUILDDIR)/yasm && PATH="$(WASI_SDK)/bin:$$PATH" make -j 4 yasm
+	cp $(BUILDDIR)/yasm/yasm $(BUILDDIR)/yasm/yasm.wasm
 
-yasm.wasm: copy.yasm
-	cd $(BUILDDIR)/yasm && sh autogen.sh && autoreconf -ivf && emconfigure ./configure --prefix=/share
-	cd yasm && cp --preserve=mode genperf* gp-* re2c* genmacro* genversion* genstring* genmodule* $(BUILDDIR)/yasm/
-	cd $(BUILDDIR)/yasm && emmake make yasm EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=yasm"
-
-yasm: yasm.libs yasm.wasm $(BUILDDIR)/yasm/yasm.wasm
+yasm: yasm.wasi
+	cp $(BUILDDIR)/yasm/yasm.wasm $(WASMDIR)/yasm.wasm
 
 ### verilator
 
@@ -394,6 +404,13 @@ test.dasm: dasm
 	cd $(BUILDDIR)/test-dasm && $(WASIRUN) --dir=. dasm.wasm test.asm -otest.bin -ltest.lst
 	cmp tests/dasm/test.expected $(BUILDDIR)/test-dasm/test.bin
 	@echo 'test.dasm OK'
+
+test.yasm: yasm
+	rm -fr $(BUILDDIR)/test-yasm && mkdir -p $(BUILDDIR)/test-yasm
+	cp $(WASMDIR)/yasm.wasm tests/yasm/*.asm $(BUILDDIR)/test-yasm/
+	cd $(BUILDDIR)/test-yasm && $(WASIRUN) --dir=. yasm.wasm -f elf -o test.o test.asm
+	cmp tests/yasm/test.expected $(BUILDDIR)/test-yasm/test.o
+	@echo 'test.yasm OK'
 
 ## tcc
 
