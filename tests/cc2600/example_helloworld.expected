@@ -1,0 +1,334 @@
+	PROCESSOR 6502
+
+VSYNC                  	EQU $0
+VBLANK                 	EQU $1
+WSYNC                  	EQU $2
+RSYNC                  	EQU $3
+NUSIZ0                 	EQU $4
+NUSIZ1                 	EQU $5
+COLUP0                 	EQU $6
+COLUP1                 	EQU $7
+COLUPF                 	EQU $8
+COLUBK                 	EQU $9
+CTRLPF                 	EQU $a
+REFP0                  	EQU $b
+REFP1                  	EQU $c
+PF0                    	EQU $d
+PF1                    	EQU $e
+PF2                    	EQU $f
+RESP0                  	EQU $10
+RESP1                  	EQU $11
+RESM0                  	EQU $12
+RESM1                  	EQU $13
+RESBL                  	EQU $14
+AUDC0                  	EQU $15
+AUDC1                  	EQU $16
+AUDF0                  	EQU $17
+AUDF1                  	EQU $18
+AUDV0                  	EQU $19
+AUDV1                  	EQU $1a
+GRP0                   	EQU $1b
+GRP1                   	EQU $1c
+ENAM0                  	EQU $1d
+ENAM1                  	EQU $1e
+ENABL                  	EQU $1f
+HMP0                   	EQU $20
+HMP1                   	EQU $21
+HMM0                   	EQU $22
+HMM1                   	EQU $23
+HMBL                   	EQU $24
+VDELP0                 	EQU $25
+VDELP1                 	EQU $26
+VDELBL                 	EQU $27
+RESMP0                 	EQU $28
+RESMP1                 	EQU $29
+HMOVE                  	EQU $2a
+HMCLR                  	EQU $2b
+CXCLR                  	EQU $2c
+CXM0P                  	EQU $30
+CXM1P                  	EQU $31
+CXP0FB                 	EQU $32
+CXP1FB                 	EQU $33
+CXM0FB                 	EQU $34
+CXM1FB                 	EQU $35
+CXBLPF                 	EQU $36
+CXPPMM                 	EQU $37
+INPT0                  	EQU $38
+INPT1                  	EQU $39
+INPT2                  	EQU $3a
+INPT3                  	EQU $3b
+INPT4                  	EQU $3c
+INPT5                  	EQU $3d
+SWCHA                  	EQU $280
+SWACNT                 	EQU $281
+SWCHB                  	EQU $282
+SWBCNT                 	EQU $283
+INTIM                  	EQU $284
+TIMINT                 	EQU $285
+TIM1T                  	EQU $294
+TIM8T                  	EQU $295
+TIM64T                 	EQU $296
+T1024T                 	EQU $297
+DUMMY                  	EQU $2d
+
+	SEG.U VARS
+	ORG $80
+
+cctmp                  	ds 1
+mk_s0                  	ds 2
+mk_s1                  	ds 2
+mk_s2                  	ds 2
+mk_s3                  	ds 2
+mk_s4                  	ds 2
+mk_s5                  	ds 2
+
+LOCAL_VARIABLES_0
+
+	ORG LOCAL_VARIABLES_0
+main_1_i               	ds 1
+
+LOCAL_VARIABLES_1
+
+	ORG LOCAL_VARIABLES_1
+mini_kernel_display_text_line	ds 2
+mini_kernel_display_text_sizey	ds 1
+mini_kernel_display_text_1_i	ds 1
+mini_kernel_display_text_1_j	ds 1
+
+; Functions definitions
+	SEG CODE
+
+	ORG $0000
+	RORG $1000
+
+Powerup
+        SEI		; Set the interrupt masking flag in the processor status register.
+        CLD		; Clear the BCD mode flag in the processor status register. 
+        LDX #$FF	
+        TXS
+
+        LDA #0
+.loop	  STA $00,X	
+        DEX
+        CPX #$40	
+        BNE .loop
+        
+        JMP main
+        
+mini_kernel_position_sprites_center	SUBROUTINE
+	STA WSYNC
+	LDA #0
+	STA COLUBK
+	STA GRP0
+	STA GRP1
+	STA REFP0
+	STA REFP1
+	LDA #144
+	STA HMP1
+	LDA #128
+	STA HMP0
+	PHA
+	PLA
+	STA RESP0
+	STA RESP1
+	STA WSYNC
+	STA HMOVE
+	LDA #1
+	STA VDELP0
+	STA VDELP1
+	LDA #51
+	STA NUSIZ0
+	STA NUSIZ1
+	RTS
+
+mini_kernel_display_text	SUBROUTINE
+	STA WSYNC
+	LDA mini_kernel_display_text_line
+	STA mini_kernel_display_text_1_i
+	LDA mini_kernel_display_text_line+1
+	STA mini_kernel_display_text_1_j
+	LDA mini_kernel_display_text_1_i
+	STA mk_s0
+	LDA mini_kernel_display_text_1_j
+	STA mk_s0+1
+	CLC
+	LDA mini_kernel_display_text_1_i
+	ADC mini_kernel_display_text_sizey
+	STA mini_kernel_display_text_1_i
+	STA mk_s1
+	LDA mini_kernel_display_text_1_j
+	STA mk_s1+1
+	CLC
+	LDA mini_kernel_display_text_1_i
+	ADC mini_kernel_display_text_sizey
+	STA mini_kernel_display_text_1_i
+	STA mk_s2
+	LDA mini_kernel_display_text_1_j
+	STA mk_s2+1
+	CLC
+	LDA mini_kernel_display_text_1_i
+	ADC mini_kernel_display_text_sizey
+	STA mini_kernel_display_text_1_i
+	STA mk_s3
+	LDA mini_kernel_display_text_1_j
+	STA mk_s3+1
+	CLC
+	LDA mini_kernel_display_text_1_i
+	ADC mini_kernel_display_text_sizey
+	STA mini_kernel_display_text_1_i
+	STA mk_s4
+	LDA mini_kernel_display_text_1_j
+	STA mk_s4+1
+	CLC
+	LDA mini_kernel_display_text_1_i
+	ADC mini_kernel_display_text_sizey
+	STA mini_kernel_display_text_1_i
+	STA mk_s5
+	LDA mini_kernel_display_text_1_j
+	STA mk_s5+1
+	STA WSYNC
+	LDY mini_kernel_display_text_sizey
+	DEY
+	PHA
+	PLA
+.dowhile8
+	LDA (mk_s0),Y
+	STA GRP0
+	STA WSYNC
+	LDA (mk_s1),Y
+	STA GRP1
+	STY mini_kernel_display_text_1_i
+	LDA (mk_s2),Y
+	STA GRP0
+	LDA (mk_s4),Y
+	TAX
+	LDA (mk_s5),Y
+	STA mini_kernel_display_text_1_j
+	LDA (mk_s3),Y
+	LDY mini_kernel_display_text_1_j
+	STA GRP1
+	STX GRP0
+	STY GRP1
+	STA GRP0
+	LDY mini_kernel_display_text_1_i
+	DEY
+	BPL .dowhile8
+.dowhileend8
+	LDA #0
+	STA GRP0
+	STA GRP1
+	STA GRP0
+	RTS
+
+main	SUBROUTINE
+	JSR mini_kernel_position_sprites_center
+.while9
+	LDA #2
+	STA VBLANK
+	STA VSYNC
+	STA WSYNC
+	STA WSYNC
+	STA WSYNC
+	LDA #0
+	STA VSYNC
+	LDA #44
+	STA TIM64T
+	LDY #192
+.dowhile10
+	LDA INTIM
+	BNE .dowhile10
+.dowhileend10
+	STA WSYNC
+	LDA #0
+	STA VBLANK
+	DEY
+.dowhile11
+	STA WSYNC
+	DEY
+	CPY #110
+	BCS .dowhile11
+.dowhileend11
+	STY main_1_i
+	LDA #114
+	STA COLUP0
+	STA COLUP1
+	LDA #<line0
+	STA mini_kernel_display_text_line
+	LDA #>line0
+	STA mini_kernel_display_text_line+1
+	LDA #7
+	STA mini_kernel_display_text_sizey
+	JSR mini_kernel_display_text
+	SEC
+	LDA main_1_i
+	SBC #11
+	TAY
+	STY main_1_i
+	LDA #14
+	STA COLUP0
+	STA COLUP1
+	LDA #<line0
+	STA mini_kernel_display_text_line
+	LDA #>line0
+	STA mini_kernel_display_text_line+1
+	LDA #7
+	STA mini_kernel_display_text_sizey
+	JSR mini_kernel_display_text
+	SEC
+	LDA main_1_i
+	SBC #11
+	TAY
+	STY main_1_i
+	LDA #50
+	STA COLUP0
+	STA COLUP1
+	LDA #<line0
+	STA mini_kernel_display_text_line
+	LDA #>line0
+	STA mini_kernel_display_text_line+1
+	LDA #7
+	STA mini_kernel_display_text_sizey
+	JSR mini_kernel_display_text
+	SEC
+	LDA main_1_i
+	SBC #11
+	TAY
+.dowhile12
+	STA WSYNC
+	DEY
+	BNE .dowhile12
+.dowhileend12
+	STA WSYNC
+	STA WSYNC
+	LDA #2
+	STA VBLANK
+	LDA #35
+	STA TIM64T
+.dowhile13
+	LDA INTIM
+	BNE .dowhile13
+.dowhileend13
+	JMP .while9
+.whileend9
+	RTS
+
+; Tables in ROM
+_mk_digits
+	.byte $00, $00
+
+	align 256
+line0
+	hex 53545775525050772222222222662050
+	hex 50502000005275757552505047424252
+	hex 62020632505252321212
+
+        ECHO ([$1ffa-.]d), "bytes free in bank 0"
+        
+        ORG $0FFA
+        RORG $1FFA
+
+        .word Powerup	; NMI
+        .word Powerup	; RESET
+        .word Powerup	; IRQ
+        
+	END

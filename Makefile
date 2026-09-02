@@ -19,14 +19,15 @@ WASI_CFLAGS = --sysroot=$(WASI_SYSROOT)
 NEW_CONFIG_SUB = $(shell ls /opt/homebrew/share/automake-*/config.sub /usr/share/automake-*/config.sub 2>/dev/null | tail -1)
 NEW_CONFIG_GUESS = $(shell ls /opt/homebrew/share/automake-*/config.guess /usr/share/automake-*/config.guess 2>/dev/null | tail -1)
 
-ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t makewav fastbasic dasm Silice wiz
+ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t makewav fastbasic dasm Silice wiz cc2600 cc7800 nesfab
 
 .PHONY: clean clobber prepare $(ALLTARGETS) test test.acme test.dasm test.yasm \
 	test.vasm test.zmac test.naken_asm test.c2t test.makewav test.merlin32 \
-	test.batariBasic test.smlrc
+	test.batariBasic test.smlrc test.cc2600 test.cc7800 test.nesfab
 
 test: test.acme test.dasm test.yasm test.vasm test.zmac test.naken_asm \
-	test.c2t test.makewav test.merlin32 test.batariBasic test.smlrc
+	test.c2t test.makewav test.merlin32 test.batariBasic test.smlrc \
+	test.cc2600 test.cc7800 test.nesfab
 	@echo 'All tests passed.'
 
 all: $(ALLTARGETS)
@@ -363,6 +364,73 @@ naken_asm.wasi: copy.naken_asm
 
 naken_asm: naken_asm.wasi
 	cp $(BUILDDIR)/naken_asm/naken_asm $(WASMDIR)/naken_asm.wasm
+
+### cc2600 (WASI, Rust)
+# needs the wasm32-wasip1 rust target: rustup target add wasm32-wasip1
+# fetches crates from crates.io on first build (cargo registry cache)
+
+cc2600.wasi: copy.cc2600
+	cd $(BUILDDIR)/cc2600 && cargo build --release --target wasm32-wasip1
+	cp $(BUILDDIR)/cc2600/target/wasm32-wasip1/release/cc2600.wasm $(WASMDIR)/cc2600.wasm
+
+cc2600.fsroot: copy.cc2600
+	rm -fr $(BUILDDIR)/cc2600/fsroot && mkdir -p $(BUILDDIR)/cc2600/fsroot
+	cp -rp cc2600/headers $(BUILDDIR)/cc2600/fsroot/
+
+cc2600: cc2600.wasi cc2600.fsroot $(FSDIR)/cc2600-fs.zip
+
+### cc7800 (WASI, Rust)
+# cc7800 depends on a sibling ../cc6502 crate; the cc6502 submodule is copied there
+
+cc7800.wasi: copy.cc7800 copy.cc6502
+	cd $(BUILDDIR)/cc7800 && cargo build --release --target wasm32-wasip1
+	cp $(BUILDDIR)/cc7800/target/wasm32-wasip1/release/cc7800.wasm $(WASMDIR)/cc7800.wasm
+
+cc7800.fsroot: copy.cc7800
+	rm -fr $(BUILDDIR)/cc7800/fsroot && mkdir -p $(BUILDDIR)/cc7800/fsroot
+	cp -rp cc7800/headers $(BUILDDIR)/cc7800/fsroot/
+
+cc7800: cc7800.wasi cc7800.fsroot $(FSDIR)/cc7800-fs.zip
+
+### nesfab (WASI)
+# uses the sehugg/nesfab fork's built-in ARCH=WASI target (wasm EH, NO_THREAD);
+# needs Homebrew boost headers (BOOST_INCLUDE) and wasi-sdk
+
+nesfab.wasi: copy.nesfab
+	cd $(BUILDDIR)/nesfab && make -j 4 ARCH=WASI wasi \
+		WASI_SDK_PATH=$(WASI_SDK) OBJDIR=obj_wasi
+	cp $(BUILDDIR)/nesfab/nesfab.wasm $(WASMDIR)/nesfab.wasm
+
+nesfab.fsroot: copy.nesfab
+	rm -fr $(BUILDDIR)/nesfab/fsroot && mkdir -p $(BUILDDIR)/nesfab/fsroot
+	cp -rp nesfab/lib $(BUILDDIR)/nesfab/fsroot/
+
+nesfab: nesfab.wasi nesfab.fsroot $(FSDIR)/nesfab-fs.zip
+
+test.cc2600: cc2600
+	rm -fr $(BUILDDIR)/test-cc2600 && mkdir -p $(BUILDDIR)/test-cc2600
+	cp $(WASMDIR)/cc2600.wasm tests/cc2600/example_helloworld.c $(BUILDDIR)/test-cc2600/
+	unzip -oq $(FSDIR)/cc2600-fs.zip -d $(BUILDDIR)/test-cc2600
+	cd $(BUILDDIR)/test-cc2600 && $(WASIRUN) --dir=. cc2600.wasm -I headers -S -o example_helloworld.asm example_helloworld.c
+	cmp tests/cc2600/example_helloworld.expected $(BUILDDIR)/test-cc2600/example_helloworld.asm
+	@echo 'test.cc2600 OK'
+
+test.cc7800: cc7800
+	rm -fr $(BUILDDIR)/test-cc7800 && mkdir -p $(BUILDDIR)/test-cc7800
+	cp $(WASMDIR)/cc7800.wasm tests/cc7800/test_helloworld.c $(BUILDDIR)/test-cc7800/
+	unzip -oq $(FSDIR)/cc7800-fs.zip -d $(BUILDDIR)/test-cc7800
+	cd $(BUILDDIR)/test-cc7800 && $(WASIRUN) --dir=. cc7800.wasm -I headers -S -o test_helloworld.s test_helloworld.c
+	cmp tests/cc7800/test_helloworld.expected $(BUILDDIR)/test-cc7800/test_helloworld.s
+	@echo 'test.cc7800 OK'
+
+test.nesfab: nesfab
+	rm -fr $(BUILDDIR)/test-nesfab && mkdir -p $(BUILDDIR)/test-nesfab
+	cp $(WASMDIR)/nesfab.wasm $(BUILDDIR)/test-nesfab/
+	unzip -oq $(FSDIR)/nesfab-fs.zip -d $(BUILDDIR)/test-nesfab
+	cp -rp tests/nesfab/hello_world $(BUILDDIR)/test-nesfab/
+	cd $(BUILDDIR)/test-nesfab && $(WASIRUN) --dir=. nesfab.wasm -I lib -o main.nes hello_world/main.fab
+	cmp tests/nesfab/main.expected $(BUILDDIR)/test-nesfab/main.nes
+	@echo 'test.nesfab OK'
 
 ### Silice
 

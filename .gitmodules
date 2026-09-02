@@ -71,3 +71,15 @@
 [submodule "tinycc"]
 	path = tinycc
 	url = ./tinycc
+[submodule "cc2600"]
+	path = cc2600
+	url = https://github.com/steux/cc2600
+[submodule "cc7800"]
+	path = cc7800
+	url = https://github.com/steux/cc7800
+[submodule "cc6502"]
+	path = cc6502
+	url = https://github.com/steux/cc6502
+[submodule "nesfab"]
+	path = nesfab
+	url = https://github.com/sehugg/nesfab

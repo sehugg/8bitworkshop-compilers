@@ -1,0 +1,660 @@
+	PROCESSOR 6502
+
+INPTCTRL               	EQU $1
+VBLANK                 	EQU $1
+_WSYNC                 	EQU $2
+_RSYNC                 	EQU $3
+INPT0                  	EQU $8
+INPT1                  	EQU $9
+INPT2                  	EQU $a
+INPT3                  	EQU $b
+INPT4B                 	EQU $8
+INPT4A                 	EQU $9
+INPT5B                 	EQU $a
+INPT5A                 	EQU $b
+INPT4R                 	EQU $8
+INPT4L                 	EQU $9
+INPT5R                 	EQU $a
+INPT5L                 	EQU $b
+INPT4                  	EQU $c
+INPT5                  	EQU $d
+AUDC0                  	EQU $15
+AUDC1                  	EQU $16
+AUDF0                  	EQU $17
+AUDF1                  	EQU $18
+AUDV0                  	EQU $19
+AUDV1                  	EQU $1a
+DUMMY                  	EQU $1b
+BACKGRND               	EQU $20
+P0C1                   	EQU $21
+P0C2                   	EQU $22
+P0C3                   	EQU $23
+WSYNC                  	EQU $24
+P1C1                   	EQU $25
+P1C2                   	EQU $26
+P1C3                   	EQU $27
+MSTAT                  	EQU $28
+P2C1                   	EQU $29
+P2C2                   	EQU $2a
+P2C3                   	EQU $2b
+DPPH                   	EQU $2c
+P3C1                   	EQU $2d
+P3C2                   	EQU $2e
+P3C3                   	EQU $2f
+DPPL                   	EQU $30
+P4C1                   	EQU $31
+P4C2                   	EQU $32
+P4C3                   	EQU $33
+CHARBASE               	EQU $34
+CHBASE                 	EQU $34
+P5C1                   	EQU $35
+P5C2                   	EQU $36
+P5C3                   	EQU $37
+OFFSET                 	EQU $38
+P6C1                   	EQU $39
+P6C2                   	EQU $3a
+P6C3                   	EQU $3b
+CTRL                   	EQU $3c
+P7C1                   	EQU $3d
+P7C2                   	EQU $3e
+P7C3                   	EQU $3f
+SWCHA                  	EQU $280
+CTLSWA                 	EQU $281
+SWACNT                 	EQU $281
+SWCHB                  	EQU $282
+CTLSWB                 	EQU $283
+SWBCNT                 	EQU $283
+INTIM                  	EQU $284
+TIM1T                  	EQU $294
+TIMINT                 	EQU $295
+TIM8T                  	EQU $295
+TIM64T                 	EQU $296
+T1024T                 	EQU $297
+TIM64TI                	EQU $29e
+XCTRL                  	EQU $470
+XCTRL1                 	EQU $470
+XCTRL2                 	EQU $478
+XCTRL3                 	EQU $47c
+XCTRL4                 	EQU $471
+XCTRL5                 	EQU $472
+PAUDF0                 	EQU $0
+PAUDC0                 	EQU $1
+PAUDF1                 	EQU $2
+PAUDC1                 	EQU $3
+PAUDF2                 	EQU $4
+PAUDC2                 	EQU $5
+PAUDF3                 	EQU $6
+PAUDC3                 	EQU $7
+PAUDCTL                	EQU $8
+PSTIMER                	EQU $9
+PRANDOM                	EQU $a
+PSKCTL                 	EQU $f
+ROM_SELECT             	EQU $8000
+
+    ORG $df80
+
+ ; A78 Header v4.0
+
+.ROMSIZE = $2000
+
+.HEADER = .
+
+    DC.B    4                  ; 0          header major version
+    DC.B    "ATARI7800"        ; 1..16      header magic string - zero pad
+
+    ORG .HEADER+$11,0
+    DC.B    "test_helloworld.s"   ; 17..48     cartridge title string - zero pad
+
+    ORG .HEADER+$31,0
+    DC.B    (.ROMSIZE>>24)     ; 49..52     cartridge ROM size
+    DC.B    (.ROMSIZE>>16&$FF)
+    DC.B    (.ROMSIZE>>8&$FF)
+    DC.B    (.ROMSIZE&$FF)
+
+    ; The following 2 cartridge type bytes are deprecated as of header v4.0.
+    ; It's recommended that you still populate these bytes for support with
+    ; platforms that don't yet support v4.
+
+    DC.B    %00000000          ; 53         cartridge type A
+    DC.B    $00          ; 54           cartridge type B
+    ; _Cartridge Type A_
+    ;    bit 7 ; POKEY @ $0800 - $080F
+    ;    bit 6 ; EXRAM/M2                   (halt banked RAM)
+    ;    bit 5 ; BANKSET
+    ;    bit 4 ; SOUPER
+    ;    bit 3 ; YM2151 @ $0461 - $0462 
+    ;    bit 2 ; POKEY @ $0440 - $044F 
+    ;    bit 1 ; ABSOLUTE
+    ;    bit 0 ; ACTIVISION
+    ; _Cartridge Type B_
+    ;    bit 7 ; EXRAM/A8                   (mirror RAM)
+    ;    bit 6 ; POKEY @ $0450 - $045F 
+    ;    bit 5 ; EXRAM/X2                   (hotspot banked RAM)
+    ;    bit 4 ; EXFIX                      (2nd last bank @ $4000)
+    ;    bit 3 ; EXROM                      (ROM @ $4000)
+    ;    bit 2 ; EXRAM                      (RAM @ $4000)
+    ;    bit 1 ; SUPERGAME
+    ;    bit 0 ; POKEY @ $4000 - $7FFF
+
+    DC.B    1                  ; 55         controller 1 device type
+    DC.B    1                  ; 56         controller 2 device type
+    ;    0 = none
+    ;    1 = 7800 joystick
+    ;    2 = lightgun
+    ;    3 = paddle
+    ;    4 = trakball
+    ;    5 = 2600 joystick
+    ;    6 = 2600 driving
+    ;    7 = 2600 keypad
+    ;    8 = ST mouse
+    ;    9 = Amiga mouse
+    ;   10 = AtariVox
+    ;   11 = SNES2Atari
+
+    DC.B    %00000000          ; 57         tv type
+    ;    bits 7..2 ; reserved
+    ;    bit  1    ; 0:component,1:composite
+    ;    bit  0    ; 0:NTSC,1:PAL
+
+    DC.B    %00000000          ; 58         save peripheral
+    ;    bits 7..2 ; reserved
+    ;    bit  1    ; SaveKey/AtariVox
+    ;    bit  0    ; High Score Cart (HSC)
+
+    ; The following irq source byte is deprecated as of header v4.0.
+    ; It's recommended that you still populate this byte for support with
+    ; platforms that don't yet support v4.
+
+    ORG     .HEADER+62,0
+    DC.B    $0          ; 62         external irq source
+    ;    bits 7..5 ; reserved
+    ;    bit  4    ; POKEY  @ $0800 - $080F
+    ;    bit  3    ; YM2151 @ $0461 - $0462
+    ;    bit  2    ; POKEY  @ $0440 - $044F
+    ;    bit  1    ; POKEY  @ $0450 - $045F
+    ;    bit  0    ; POKEY  @ $4000 - $7FFF
+
+    DC.B    %00000000          ; 63         slot passthrough device
+    ;    bits 7..1 ; reserved
+    ;    bit  0    ; XM module
+
+    ; The following 6 bytes are v4 header specific. You should populate
+    ; them with valid info if you're not using V3ONLY, because they will
+    ; take precedence over v3 headers.
+
+    DC.B    0                  ; 64         mapper
+    ;    0 = linear
+    ;    1 = supergame
+    ;    2 = activision
+    ;    3 = absolute
+    ;    4 = souper
+
+
+    DC.B    0           ; 65         mapper options
+    ; linear_
+    ;    bit  7      ; bankset rom
+    ;    bits 0-1    ; option @4000...
+    ;       0 = none
+    ;       1 = 16K EXRAM
+    ;       2 = 8K  EXRAM/A8
+    ;       3 = 32K EXRAM/M2
+    ; supergame_
+    ;    bit  7      ; bankset rom
+    ;    bits 0-2    ; option @4000...
+    ;       0 = none
+    ;       1 = 16K EXRAM
+    ;       2 = 8K  EXRAM/A8
+    ;       3 = 32K EXRAM/M2
+    ;       4 = 16K EXROM
+    ;       5 = EXFIX
+    ;       6 = 32K EXRAM/X2
+
+    DC.B    %00000000          ; 66         audio hi
+    DC.B    0          ; 67         audio lo
+    ;    bit  4      ; covox@430
+    ;    bit  3      ; ym2151@460
+    ;    bits 0-2    ; pokey...
+    ;       0 = none
+    ;       1 = pokey@440
+    ;       2 = pokey@450
+    ;       3 = dual pokey @440+@450
+    ;       4 = pokey@800
+    ;       5 = pokey@4000
+
+    DC.B    %00000000          ; 68         interrupt hi
+    DC.B    $0            ; 69         interrupt lo
+    ;    bit  2    ; YM2151
+    ;    bit  1    ; pokey 2 (@440)
+    ;    bit  0    ; pokey 1 (@4000, @450, or @800)
+
+
+    ORG     .HEADER+100,0       ; 100..127  footer magic string
+    DC.B    "ACTUAL CART DATA STARTS HERE"
+
+        
+	SEG.U ZEROPAGE
+	ORG $40
+
+cctmp                  	ds 1
+i                      	ds 1
+dlpnt                  	ds 2
+dlend                  	ds 24
+
+LOCAL_VARIABLES_0
+
+
+	SEG.U RAM1
+	ORG $1800
+	RORG $1800
+dl0                    	ds 32
+dl1                    	ds 32
+dl2                    	ds 32
+dl3                    	ds 32
+dl4                    	ds 32
+dl5                    	ds 32
+dl6                    	ds 32
+dl7                    	ds 32
+dl8                    	ds 32
+dl9                    	ds 32
+dl10                   	ds 32
+dl11                   	ds 32
+dl12                   	ds 32
+dl13                   	ds 32
+dl14                   	ds 32
+dl15                   	ds 32
+dl16                   	ds 32
+dl17                   	ds 32
+dl18                   	ds 32
+dl19                   	ds 32
+dl20                   	ds 32
+dl21                   	ds 32
+dl22                   	ds 32
+dl23                   	ds 32
+dll                    	ds 84
+
+; Scattered data
+	SEG SCATTERED
+
+	ORG $e000
+	RORG $e000
+font
+	hex 3cc6dc2cd86e602ec63a6cce6ec6c66c
+	hex c07ace6c18741082c618de3cfc3c1810
+	hex 0018006618463f000c30000018001860
+	hex 287aee6c0c6c6c306c6800180e007018
+	hex 003e1800000000300c180000ff07e0c0
+	hex 033cff086018e73c3c06081830183603
+	hex 00f0ff0000c0330333c003180f0018ff
+	hex 18001818c0e0070000fffff00000000f
+	hex c33923d327919fd139c5933191393993
+	hex 3f853193e78bef7d39e721c303c3e7ef
+	hex ffe7ff99e7b9c0fff3cfffffe7ffe79f
+	hex d7851193f39393cf9397ffe7f1ff8fe7
+	hex ffc1e7ffffffffcff3e7ffff00f81f3f
+	hex fcc300f79fe718c3c3f9f7e7cfe7c9fc
+	hex ff0f00ffff3fccfccc3ffce7f0ffe700
+	hex e7ffe7e73f1ff8ffff00000ffffffff0
+
+	ORG $e100
+	RORG $e100
+	hex 62c6c666cc606066c6188edc60c6cec6
+	hex c0ccdcc618c638c6ee18e030620c1830
+	hex 000000667c6666001818661818001830
+	hex 6c1860c60cc6c630860c181818001800
+	hex 001c18000000ff300c380000c00e70c0
+	hex 037eff1c601c7e7e18061c18c0183607
+	hex 00f0ff0000c0cc03cce003180f001800
+	hex 18001818c0e0070000ff03f00000000f
+	hex 9d393999339f9f9939e771239f393139
+	hex 3f332339e739c73911e71fcf9df3e7cf
+	hex ffffff99839999ffe7e799e7e7ffe7cf
+	hex 93e79f39f33939cf79f3e7e7e7ffe7ff
+	hex ffe3e7ffffff00cff3c7ffff3ff18f3f
+	hex fc8100e39fe38181e7f9e3e73fe7c9f8
+	hex ff0f00ffff3f33fc331ffce7f0ffe7ff
+	hex e7ffe7e73f1ff8ffff00fc0ffffffff0
+
+	ORG $e200
+	RORG $e200
+	hex 60f6c6c0c66060c6c6180ed860d6dcc6
+	hex dcdad80618c66cee5c187030300c187f
+	hex 000000f706306700300c3c1800000018
+	hex c6182806ee06c6308e060000307e0c18
+	hex ff7f18ff0000ff300cf007e0c01c38c0
+	hex 037e003e600f3c6618063effc018760f
+	hex 00f0ff0000c0cc03ccf0031f0f1ff800
+	hex 1ffffff8c0e00700000003f000f8000f
+	hex 9f09393f399f9f3939e7f1279f292339
+	hex 232527f9e7399311a3e78fcfcff3e780
+	hex ffffff08f9cf98ffcff3c3e7ffffffe7
+	hex 39e7d7f911f939cf71f9ffffcf81f3e7
+	hex 0080e700ffff00cff30ff81f3fe3c73f
+	hex fc81ffc19ff0c399e7f9c1003fe789f0
+	hex ff0f00ffff3f33fc330ffce0f0e007ff
+	hex e00000073f1ff8fffffffc0fff07fff0
+
+	ORG $e300
+	RORG $e300
+	hex 6ec6dcc0c66c6ccef6180ed060febac6
+	hex c6c6cc6c18c6c6fe383c38307c0c7e7f
+	hex 001800663c183800300cff7e007e000c
+	hex c6180c2ccc06ec10686e00006000060c
+	hex ff7f18ffff0000300ce00ff0c0381cc0
+	hex 037e007f60073c6666067fff30183e1f
+	hex 00f0000000c0330300f8031f001ff800
+	hex 1ffffff8c0e00700000003000ff8f0f0
+	hex 9139233f3993933109e7f12f9f014539
+	hex 39393393e7393901c7c3c7cf83f38180
+	hex ffe7ff99c3e7c7ffcff30081ff81fff3
+	hex 39e7f3d333f913ef9791ffff9ffff9f3
+	hex 0080e70000ffffcff31ff00f3fc7e33f
+	hex fc81ff809ff8c39999f98000cfe7c1e0
+	hex ff0fffffff3fccfcff07fce0ffe007ff
+	hex e00000073f1ff8fffffffcfff0070f0f
+
+	ORG $e400
+	RORG $e400
+	hex 6ec6c6c0c66060c0c6180ed860fe76c6
+	hex c6c6c6c018c6c6fe74661c30300c3c30
+	hex 001866f7600c3c18300c3c1800000006
+	hex c61806086cecc084e4c61818307e0c06
+	hex 003e1800ffff00300c001c38c0700ec0
+	hex 037e007f60007e7e66063e183018033f
+	hex 00f0000000c0330300fc031800180000
+	hex 00180018c0e00700ff0003000f18f0f0
+	hex 9139393f399f9f3f39e7f1279f018939
+	hex 3939393fe73939018b99e3cfcff3c3cf
+	hex ffe799089ff3c3e7cff3c3e7fffffff9
+	hex 39e7f9f793133f7b1b39e7e7cf81f3f9
+	hex ffc1e7ff0000ffcff3ffe3c73f8ff13f
+	hex fc81ff809fff818199f9c1e7cfe7fcc0
+	hex ff0fffffff3fccfcff03fce7ffe7ffff
+	hex ffe7ffe73f1ff8ff00fffcfff0e70f0f
+
+	ORG $e500
+	RORG $e500
+	hex 6674c666cc606060c6180ecc60eee6c6
+	hex c6c6c6c618c6c6d6ee660e30120c1810
+	hex 001866663e66660c1818661800000003
+	hex 6c38c60c2cc06086c4c6000018001866
+	hex 001c180000ff00300c001818c0e007ff
+	hex ff3c007f6000e73c18061c18c018007f
+	hex 00f0000000c0cc0300fe031800180000
+	hex 00180018c0e007ffff0003000f18f0f0
+	hex 998b3999339f9f9f39e7f1339f111939
+	hex 39393939e73939291199f1cfedf3e7ef
+	hex ffe79999c19999f3e7e799e7fffffffc
+	hex 93c739f3d33f9f793b39ffffe7ffe799
+	hex ffe3e7ffff00ffcff3ffe7e73f1ff800
+	hex 00c3ff809fff18c3e7f9e3e73fe7ff80
+	hex ff0fffffff3f33fcff01fce7ffe7ffff
+	hex ffe7ffe73f1ff80000fffcfff0e70f0f
+
+	ORG $e600
+	RORG $e600
+	hex 3c30dc2cd86e6e2ec63a0ec660c6c66c
+	hex dc7cdc6c7ac6c6d6c666f63c0c3c0000
+	hex 0018666618623c060c30000000000000
+	hex 28186c6e0cee2ef6686c00000e00703c
+	hex 00081800000000300c001818c0c003ff
+	hex ff0000366000c30018060818c01800ff
+	hex 00f000ff00c0cc0300ff031800180000
+	hex 00180018c0e007ffff0003000f18f0f0
+	hex c3cf23d3279191d139c5f1399f393993
+	hex 2383239385393929399909c3f3c3ffff
+	hex ffe79999e79dc3f9f3cfffffffffffff
+	hex d7e79391f311d1099793fffff1ff8fc3
+	hex fff7e7ffffffffcff3ffe7e73f3ffc00
+	hex 00ffffc99fff3cffe7f9f7e73fe7ff00
+	hex ff0fff00ff3f33fcff00fce7ffe7ffff
+	hex ffe7ffe73f1ff80000fffcfff0e70f0f
+
+	ORG $e700
+	RORG $e700
+	hex 00000000000000000000000000000000
+	hex 00000000000000000000000000000018
+	hex 00000000000000000000000000300000
+	hex 00000000000000000000000030000000
+	hex 0000001800000000300c180000ff03c0
+	hex c0030000006018c30000060018301800
+	hex 0100f0ff00ffc03303338003180f0018
+	hex ff18001818c0e0070000fffff0000000
+	hex 0fffffffffffffffffffffffffffffff
+	hex ffffffffffffffffffffffffffffffe7
+	hex ffffffffffffffffffffffffffcfffff
+	hex ffffffffffffffffffffffffcfffffff
+	hex ffffffe7ffffffffcff3e7ffff00fc3f
+	hex 3ffcffffff9fe73cfffff9ffe7cfe7ff
+	hex feff0f00ff003fccfccc7ffce7f0ffe7
+	hex 00e7ffe7e73f1ff8ffff00000fffffff
+
+
+; Functions definitions
+	SEG CODE
+
+	ORG $e800
+	RORG $e800
+
+main	SUBROUTINE
+	LDX #0
+	LDA #15
+	STA dll,X
+	INX
+	LDA #33
+	STA dll,X
+	INX
+	LDA #0
+	STA dll,X
+	INX
+	LDA #8
+	STA dll,X
+	INX
+	LDA #33
+	STA dll,X
+	INX
+	LDA #0
+	STA dll,X
+	LDY #0
+.for1
+	INX
+	LDA #7
+	STA dll,X
+	INX
+	LDA dls+24,Y
+	STA dll,X
+	INX
+	LDA dls,Y
+	STA dll,X
+.forupdate1
+	INY
+	CPY #24
+	BNE .for1
+.forend1
+	INX
+	LDA #15
+	STA dll,X
+	INX
+	LDA #33
+	STA dll,X
+	INX
+	LDA #0
+	STA dll,X
+	INX
+	LDA #9
+	STA dll,X
+	INX
+	LDA #33
+	STA dll,X
+	INX
+	LDA #0
+	STA dll,X
+	LDA #>font
+	STA CHARBASE
+	LDA #>dll
+	STA DPPH
+	LDA #<dll
+	STA DPPL
+	LDA #24
+	STA P0C1
+	LDA #56
+	STA P0C2
+	LDA #88
+	STA P0C3
+	LDA #67
+	STA CTRL
+	LDX #23
+	BMI .forend2
+.for2
+	LDA #0
+	STA dlend,X
+.forupdate2
+	DEX
+	BPL .for2
+.forend2
+	LDX #0
+	LDA dls,X
+	STA dlpnt
+	LDA dls+24,X
+	STA dlpnt+1
+	LDY dlend,X
+	LDA #<helloworld
+	STA (dlpnt),Y
+	INY
+	LDA #96
+	STA (dlpnt),Y
+	INY
+	LDA #>helloworld
+	STA (dlpnt),Y
+	INY
+	LDA #20
+	STA (dlpnt),Y
+	INY
+	LDA #0
+	STA (dlpnt),Y
+	INY
+	STY dlend,X
+	LDX #23
+	BMI .forend3
+.for3
+	LDA dls,X
+	STA dlpnt
+	LDA dls+24,X
+	STA dlpnt+1
+	LDY dlend,X
+	INY
+	LDA #0
+	STA (dlpnt),Y
+.forupdate3
+	DEX
+	BPL .for3
+.forend3
+.dowhile1
+.dowhile2
+	LDA MSTAT
+	AND #128
+	BEQ .dowhile2
+.dowhileend2
+.dowhile3
+	LDA MSTAT
+	AND #128
+	BNE .dowhile3
+.dowhileend3
+	JMP .dowhile1
+.dowhileend1
+	RTS
+
+; Tables in ROM
+dls
+	.byte <dl0, <dl1, <dl2, <dl3, <dl4, <dl5, <dl6, <dl7
+	.byte <dl8, <dl9, <dl10, <dl11, <dl12, <dl13, <dl14, <dl15
+	.byte <dl16, <dl17, <dl18, <dl19, <dl20, <dl21, <dl22, <dl23
+	.byte >dl0, >dl1, >dl2, >dl3, >dl4, >dl5, >dl6, >dl7
+	.byte >dl8, >dl9, >dl10, >dl11, >dl12, >dl13, >dl14, >dl15
+	.byte >dl16, >dl17, >dl18, >dl19, >dl20, >dl21, >dl22, >dl23
+helloworld
+	hex 08050c0c0f20170f120c042180
+
+        ORG $ff1e
+        RORG $ff1e
+
+START
+    sei                     ; Disable interrupts
+    cld                     ; Clear decimal mode
+
+;******** Atari recommended startup procedure
+
+    lda     #$07
+    sta     $01        ; Lock into 7800 mode
+    lda     #$7F
+    sta     $3C        ; Disable DMA
+    lda     #$00            
+    sta     $38 
+    sta     $01
+    ldx     #$FF       ; Reset stack pointer
+    txs
+
+;************** Clear zero page and hardware ******
+
+    ldx     #$40
+    lda     #$00
+crloop1    
+    sta     $00,x      ; Clear zero page
+    sta	    $100,x		 ; Clear page 1
+    inx
+    bne     crloop1
+
+;************* Clear RAM **************************
+
+    ldy     #$00            ; Clear Ram
+    lda     #$18            ; Start at $1800
+    sta     $81             
+    lda     #$00
+    sta     $80
+crloop3
+    lda     #$00
+    sta     ($80),y         ; Store data
+    iny                     ; Next byte
+    bne     crloop3         ; Branch if not done page
+    inc     $81             ; Next page
+    lda     $81
+    cmp     #$20            ; End at $1FFF
+    bne     crloop3         ; Branch if not
+
+    ldy     #$00            ; Clear Ram
+    lda     #$22            ; Start at $2200
+    sta     $81             
+    lda     #$00
+    sta     $80
+crloop4
+    lda     #$00
+    sta     ($80),y         ; Store data
+    iny                     ; Next byte
+    bne     crloop4         ; Branch if not done page
+    inc     $81             ; Next page
+    lda     $81
+    cmp     #$27            ; End at $27FF
+    bne     crloop4         ; Branch if not
+
+    ldx     #$00
+    lda     #$00
+crloop5                     ; Clear 2100-213F
+    sta     $2100,x
+    inx
+    cpx     #$40
+    bne     crloop5
+    jmp     main 
+
+NMI
+    RTI
+
+IRQ
+    RTI
+                
+        ORG $fff8
+        .byte $FF ; Region verification
+        .byte $F7 
+        .word #NMI	; NMI
+        .word #START	; RESET
+        .word #IRQ	; IRQ
+        
+	END
