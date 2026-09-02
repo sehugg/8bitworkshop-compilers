@@ -23,11 +23,11 @@ ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariB
 
 .PHONY: clean clobber prepare $(ALLTARGETS) test test.acme test.dasm test.yasm \
 	test.vasm test.zmac test.naken_asm test.c2t test.makewav test.merlin32 \
-	test.batariBasic test.smlrc test.cc2600 test.cc7800 test.nesfab
+	test.batariBasic test.smlrc test.cc2600 test.cc7800 test.nesfab test.cc65
 
 test: test.acme test.dasm test.yasm test.vasm test.zmac test.naken_asm \
 	test.c2t test.makewav test.merlin32 test.batariBasic test.smlrc \
-	test.cc2600 test.cc7800 test.nesfab
+	test.cc2600 test.cc7800 test.nesfab test.cc65
 	@echo 'All tests passed.'
 
 all: $(ALLTARGETS)
@@ -76,35 +76,43 @@ $(FSDIR)/%-fs.zip: $(BUILDDIR)/%/fsroot
 
 EMCC_FLAGS= -Os -s PURE_WASI=1-s FORCE_FILESYSTEM=1
 
-### cc65
+### cc65 (WASI)
 
-cc65.wasm: copy.cc65
-	mkdir -p cc65/target/none
-	cd cc65 && make -j 4
-	cd $(BUILDDIR)/cc65 && emmake make -j 4 cc65 CC=emcc EXE_SUFFIX= LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=cc65"
-	cd $(BUILDDIR)/cc65 && emmake make -j 4 ca65 CC=emcc EXE_SUFFIX= LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ca65"
-	cd $(BUILDDIR)/cc65 && emmake make -j 4 ld65 CC=emcc EXE_SUFFIX= LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=ld65"
+# The runtime libraries (6502 code) are build-time data for ld65, not wasm:
+# build the native host tools + all target libs in the copy first, then the
+# wasm binaries. Native and wasm src builds share wrk/, so the wasm build
+# must happen after the native one (it recompiles from source).
+# lib/ and target/ are gitignored upstream, so they cannot come from the
+# submodule working tree - always build them fresh.
+cc65.wasi: copy.cc65
+	cd $(BUILDDIR)/cc65/src && make mostlyclean
+	cd $(BUILDDIR)/cc65/src && make -j 4 ar65 ca65 cc65
+	cd $(BUILDDIR)/cc65/libsrc && PATH="$(BUILDDIR)/cc65/bin:$$PATH" make -j 4
+	cd $(BUILDDIR)/cc65/src && make mostlyclean
+	cd $(BUILDDIR)/cc65/src && PATH="$(WASI_SDK)/bin:$$PATH" \
+		make -j 4 cc65 ca65 ld65 \
+		CC="$(WASI_CC) $(WASI_CFLAGS)" \
+		AR="$(WASI_SDK)/bin/llvm-ar" \
+		USER_CFLAGS="-O2 -D_WASI_EMULATED_GETPID" \
+		LDLIBS="-lwasi-emulated-getpid" \
+		EXE_SUFFIX=.wasm \
+		BUILD_ID="Git $$(cd $(CURDIR)/cc65 && git rev-parse --short HEAD)"
 
-$(FSDIR)/fs65-%.js:
-	cd cc65 && $(FILE_PACKAGER) $(FSDIR)/fs65-$*.data --separate-metadata --js-output=$@ \
-	--preload include asminc cfg/$** lib/$** target/$**
+# src/Makefile honors CC/AR/USER_CFLAGS/EXE_SUFFIX overrides; LLVM ar is
+# required (host ar corrupts wasm object archives). Compile-time data dirs
+# default to /share/cc65/{include,asminc,cfg,lib,target}, so the fs zip uses
+# that layout (absolute paths resolve against the preopened WASI root).
+$(BUILDDIR)/cc65/fsroot: cc65.wasi
+	mkdir -p $@/share/cc65/cfg $@/share/cc65/lib $@/share/cc65/target
+	cp -rp $(BUILDDIR)/cc65/include $(BUILDDIR)/cc65/asminc $@/share/cc65/
+	cp -rp $(BUILDDIR)/cc65/cfg/* $@/share/cc65/cfg/
+	cp -rp $(BUILDDIR)/cc65/lib/* $@/share/cc65/lib/
+	cp -rpf $(BUILDDIR)/cc65/target/* $@/share/cc65/target/
 
-$(BUILDDIR)/65-%/fsroot:
-	mkdir -p $@ $@/cfg $@/lib $@/target
-	cp -rp cc65/include cc65/asminc $@
-	cp -rp cc65/cfg/$** $@/cfg/
-	cp -rp cc65/lib/$** $@/lib/
-	cp -rpf cc65/target/$** $@/target/
-
-cc65.filesystems: $(FSDIR)/fs65-nes.js $(FSDIR)/fs65-apple2.js $(FSDIR)/fs65-c64.js\
-	$(FSDIR)/fs65-atari.js $(FSDIR)/fs65-none.js\
-	$(FSDIR)/fs65-vic20.js $(FSDIR)/fs65-atari2600.js \
-	$(FSDIR)/fs65-pce.js
-
-cc65: cc65.wasm cc65.filesystems \
-	$(BUILDDIR)/cc65/bin/cc65.wasm \
-	$(BUILDDIR)/cc65/bin/ca65.wasm \
-	$(BUILDDIR)/cc65/bin/ld65.wasm
+cc65: cc65.wasi $(FSDIR)/cc65-fs.zip
+	cp $(BUILDDIR)/cc65/bin/cc65.wasm $(WASMDIR)/cc65.wasm
+	cp $(BUILDDIR)/cc65/bin/ca65.wasm $(WASMDIR)/ca65.wasm
+	cp $(BUILDDIR)/cc65/bin/ld65.wasm $(WASMDIR)/ld65.wasm
 
 ### sdcc
 
@@ -288,7 +296,7 @@ makewav: makewav.wasi
 merlin32.wasi: copy.merlin32
 	sed -i.bak 's/CFLAGS+=-O3 -Wall -DMACRO_DIR/CFLAGS+=-O3 -Wall -mllvm -wasm-enable-sjlj -mllvm -wasm-use-legacy-eh=false -DMACRO_DIR/' \
 		$(BUILDDIR)/merlin32/Source/GNUmakefile
-	sed -i.bak 's|\$$(CC) \$$(OBJECTS) -o \$$@|$(CC) $(OBJECTS) -o $$@ -lsetjmp|' \
+	sed -i.bak 's|\$$(CC) \$$(OBJECTS) -o \$$@|$$(CC) $$(OBJECTS) -o $$@ -lsetjmp|' \
 		$(BUILDDIR)/merlin32/Source/GNUmakefile
 	cd $(BUILDDIR)/merlin32/Source && PATH="$(WASI_SDK)/bin:$$PATH" \
 		make -f GNUmakefile CC="$(WASI_CC) $(WASI_CFLAGS) -mllvm -wasm-enable-sjlj -mllvm -wasm-use-legacy-eh=false"
@@ -406,6 +414,17 @@ nesfab.fsroot: copy.nesfab
 	cp -rp nesfab/lib $(BUILDDIR)/nesfab/fsroot/
 
 nesfab: nesfab.wasi nesfab.fsroot $(FSDIR)/nesfab-fs.zip
+
+test.cc65: cc65
+	rm -fr $(BUILDDIR)/test-cc65 && mkdir -p $(BUILDDIR)/test-cc65
+	cp $(WASMDIR)/cc65.wasm $(WASMDIR)/ca65.wasm $(WASMDIR)/ld65.wasm tests/cc65/*.c $(BUILDDIR)/test-cc65/
+	unzip -oq $(FSDIR)/cc65-fs.zip -d $(BUILDDIR)/test-cc65
+	cd $(BUILDDIR)/test-cc65 && $(WASIRUN) --dir=.::/ cc65.wasm -t nes -T -o test.s test.c
+	cd $(BUILDDIR)/test-cc65 && $(WASIRUN) --dir=.::/ ca65.wasm -o test.o test.s
+	cd $(BUILDDIR)/test-cc65 && $(WASIRUN) --dir=.::/ ld65.wasm -t nes -o test.nes test.o /share/cc65/lib/nes.lib
+	cmp tests/cc65/test.s.expected $(BUILDDIR)/test-cc65/test.s
+	cmp tests/cc65/test.nes.expected $(BUILDDIR)/test-cc65/test.nes
+	@echo 'test.cc65 OK'
 
 test.cc2600: cc2600
 	rm -fr $(BUILDDIR)/test-cc2600 && mkdir -p $(BUILDDIR)/test-cc2600
