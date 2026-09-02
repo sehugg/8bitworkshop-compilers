@@ -67,7 +67,7 @@
 	url = https://github.com/dmsc/mkatr
 [submodule "acme"]
 	path = acme
-	url = ./acme
+	url = https://github.com/sehugg/acme
 [submodule "tinycc"]
 	path = tinycc
 	url = ./tinycc

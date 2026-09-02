@@ -6,14 +6,29 @@ FSDIR=$(OUTPUTDIR)/fs
 WASMDIR=$(OUTPUTDIR)/wasm
 
 FILE_PACKAGER=python3 $(EMSDK)/upstream/emscripten/tools/file_packager.py
+
+# WASI toolchain (https://github.com/WebAssembly/wasi-sdk)
+WASI_SDK ?= $(HOME)/wasi-sdk
+WASI_CC = $(WASI_SDK)/bin/clang
+WASI_STRIP = $(WASI_SDK)/bin/strip
+WASI_SYSROOT = $(WASI_SDK)/share/wasi-sysroot
+WASI_CFLAGS = --sysroot=$(WASI_SYSROOT)
+
 ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t makewav fastbasic dasm Silice wiz
 
-.PHONY: clean clobber prepare $(ALLTARGETS)
+.PHONY: clean clobber prepare $(ALLTARGETS) test test.acme
+
+test: test.acme
+	@echo 'All tests passed.'
 
 all: $(ALLTARGETS)
 
 prepare:
 	mkdir -p $(OUTDIR) $(BUILDDIR) $(OUTPUTDIR) $(FSDIR) $(WASMDIR)
+	@test -x "$(WASI_CC)" || { echo 'wasi-sdk not found at $(WASI_SDK). Set WASI_SDK=... or install https://github.com/WebAssembly/wasi-sdk.'; exit 1; }
+
+# smoke test for the Emscripten toolchain (only needed for emcc-based targets)
+check.emcc:
 	@emcc --version || { echo 'Emscripten not found. Install https://github.com/emscripten-core/emsdk first.'; exit 1; }
 	@emcc -s USE_BOOST_HEADERS=1 -o /tmp/emcctest.out test.c
 
@@ -44,13 +59,7 @@ $(FSDIR)/fs%.js: $(BUILDDIR)/%/fsroot
 	#node -e "require('$*.js')().then((m)=>{m.callMain(['--help'])})" 2> $*.stderr 1> $*.stdout
 	-node -e "require('$*.js')({arguments:['--help']})" 2> $*.stderr 1> $*.stdout
 
-EMCC_FLAGS= -Os \
-	--memory-init-file 0 \
-	-s MODULARIZE=1 \
-	-s 'EXPORTED_RUNTIME_METHODS=[\"FS\",\"callMain\"]' \
-	-s FORCE_FILESYSTEM=1 \
-	-s ALLOW_MEMORY_GROWTH=1 \
-	-lworkerfs.js
+EMCC_FLAGS= -Os -s PURE_WASI=1-s FORCE_FILESYSTEM=1
 
 ### cc65
 
@@ -350,13 +359,25 @@ vasm.wasm: copy.vasm
 
 vasm: vasm.wasm $(BUILDDIR)/vasm/vasmarm_std.wasm
 
-## acme
+## acme (WASI)
 
-acme.wasm: copy.acme
-	sed -i 's/gcc/emcc /g' $(BUILDDIR)/acme/src/Makefile
-	cd $(BUILDDIR)/acme/src && emmake make EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=acme"
+acme.wasi: copy.acme
+	cd $(BUILDDIR)/acme/src && PATH="$(WASI_SDK)/bin:$$PATH" \
+		make CC="$(WASI_CC) $(WASI_CFLAGS)" CFLAGS="-O3 -Wall -Wstrict-prototypes"
+	cp $(BUILDDIR)/acme/src/acme $(BUILDDIR)/acme/src/acme.wasm
 
-acme: acme.wasm $(BUILDDIR)/acme/src/acme.wasm
+acme: acme.wasi
+	cp $(BUILDDIR)/acme/src/acme.wasm $(WASMDIR)/acme.wasm
+
+# run WASI binaries with wasmtime by default; override e.g. WASIRUN=wasmer make test.acme
+WASIRUN ?= wasmtime
+
+test.acme: acme
+	rm -fr $(BUILDDIR)/test-acme && mkdir -p $(BUILDDIR)/test-acme
+	cp $(WASMDIR)/acme.wasm tests/acme/*.a $(BUILDDIR)/test-acme/
+	cd $(BUILDDIR)/test-acme && $(WASIRUN) --dir=. acme.wasm -o 6502.prg 6502.a
+	cmp tests/acme/6502.expected $(BUILDDIR)/test-acme/6502.prg
+	@echo 'test.acme OK'
 
 ## tcc
 
