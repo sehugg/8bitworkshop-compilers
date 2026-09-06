@@ -19,16 +19,12 @@
 [submodule "zmac"]
 	path = zmac
 	url = https://github.com/sehugg/zmac.git
-
 [submodule "SmallerC"]
 	path = SmallerC
 	url = https://github.com/alexfru/SmallerC
 [submodule "nesasm"]
 	path = nesasm
 	url = https://github.com/camsaul/nesasm
-[submodule "batariBasic"]
-	path = batariBasic
-	url = https://github.com/sehugg/batariBasic
 [submodule "c2t"]
 	path = c2t
 	url = https://github.com/datajerk/c2t

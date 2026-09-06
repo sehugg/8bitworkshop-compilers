@@ -19,14 +19,14 @@ WASI_CFLAGS = --sysroot=$(WASI_SYSROOT)
 NEW_CONFIG_SUB = $(shell ls /opt/homebrew/share/automake-*/config.sub /usr/share/automake-*/config.sub 2>/dev/null | tail -1)
 NEW_CONFIG_GUESS = $(shell ls /opt/homebrew/share/automake-*/config.guess /usr/share/automake-*/config.guess 2>/dev/null | tail -1)
 
-ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 batariBasic c2t makewav fastbasic dasm Silice wiz cc2600 cc7800 nesfab
+ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 c2t makewav fastbasic dasm Silice wiz cc2600 cc7800 nesfab
 
 .PHONY: clean clobber prepare $(ALLTARGETS) test test.acme test.dasm test.yasm \
 	test.vasm test.zmac test.naken_asm test.c2t test.makewav test.merlin32 \
-	test.batariBasic test.smlrc test.cc2600 test.cc7800 test.nesfab test.cc65
+	test.smlrc test.cc2600 test.cc7800 test.nesfab test.cc65
 
 test: test.acme test.dasm test.yasm test.vasm test.zmac test.naken_asm \
-	test.c2t test.makewav test.merlin32 test.batariBasic test.smlrc \
+	test.c2t test.makewav test.merlin32 test.smlrc \
 	test.cc2600 test.cc7800 test.nesfab test.cc65
 	@echo 'All tests passed.'
 
@@ -305,19 +305,6 @@ merlin32.wasi: copy.merlin32
 merlin32: merlin32.wasi
 	cp $(BUILDDIR)/merlin32/Source/merlin32.wasm $(WASMDIR)/merlin32.wasm
 
-### batariBasic (WASI)
-# needs flex on the host; all 4 pipeline tools are built
-
-batariBasic.wasi: copy.batariBasic
-	cd $(BUILDDIR)/batariBasic/source && PATH="$(WASI_SDK)/bin:$$PATH" \
-		make all CC="$(WASI_CC) $(WASI_CFLAGS)" CFLAGS="-O2"
-
-batariBasic: batariBasic.wasi
-	cp $(BUILDDIR)/batariBasic/source/2600basic $(WASMDIR)/2600basic.wasm
-	cp $(BUILDDIR)/batariBasic/source/preprocess $(WASMDIR)/preprocess.wasm
-	cp $(BUILDDIR)/batariBasic/source/postprocess $(WASMDIR)/postprocess.wasm
-	cp $(BUILDDIR)/batariBasic/source/optimize $(WASMDIR)/optimize.wasm
-
 ### liblzg
 ### TODO
 
@@ -585,15 +572,6 @@ test.merlin32: merlin32
 	cd $(BUILDDIR)/test-merlin32 && $(WASIRUN) --dir=. merlin32.wasm test.s
 	cmp tests/merlin32/test.expected $(BUILDDIR)/test-merlin32/test
 	@echo 'test.merlin32 OK'
-
-test.batariBasic: batariBasic
-	rm -fr $(BUILDDIR)/test-batariBasic && mkdir -p $(BUILDDIR)/test-batariBasic
-	cp $(WASMDIR)/2600basic.wasm $(WASMDIR)/preprocess.wasm tests/batariBasic/* $(BUILDDIR)/test-batariBasic/
-	cp -r batariBasic/includes $(BUILDDIR)/test-batariBasic/
-	cd $(BUILDDIR)/test-batariBasic && $(WASIRUN) --dir=. preprocess.wasm test.bas | \
-		$(WASIRUN) --dir=. 2600basic.wasm > game
-	cmp tests/batariBasic/game.expected $(BUILDDIR)/test-batariBasic/game
-	@echo 'test.batariBasic OK'
 
 test.smlrc: smlrc
 	rm -fr $(BUILDDIR)/test-smlrc && mkdir -p $(BUILDDIR)/test-smlrc
