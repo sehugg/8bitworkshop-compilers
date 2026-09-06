@@ -55,7 +55,7 @@ jobs:
 
       - name: Build WASI tools
         run: make -k WASI_SDK=$WASI_SDK_DIR acme dasm yasm vasm zmac naken_asm \
-          c2t makewav merlin32 smlrc nesasm cc2600 cc7800 nesfab cc65
+          c2t makewav merlin32 smlrc nesasm cc2600 cc7800 cc65 nesfab
         if: success() || failure()
 
       - name: Run WASI tests
