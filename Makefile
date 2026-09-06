@@ -100,16 +100,47 @@ cc65.wasi: copy.cc65
 
 # src/Makefile honors CC/AR/USER_CFLAGS/EXE_SUFFIX overrides; LLVM ar is
 # required (host ar corrupts wasm object archives). Compile-time data dirs
-# default to /share/cc65/{include,asminc,cfg,lib,target}, so the fs zip uses
+# default to /share/cc65/{include,asminc,cfg,lib,target}, so the fs zips use
 # that layout (absolute paths resolve against the preopened WASI root).
+
+# Per-platform fs packages, like the old Emscripten fs65-<platform>.js/.data
+# but as WASI zips named cc65-fs-<platform>.zip (IDE loads
+# src/worker/fs/<name>.zip and unpacks it at the WASI root). Each zip carries
+# the shared include/asminc plus only that platform's cfg/lib/target data; the
+# glob patterns are chosen so they don't bleed across platforms (e.g.
+# cfg/atari* would also match atari2600.cfg).
+CC65_PLATFORMS=none nes pce atari2600 atari8 vic20 apple2 c64
+
+# The monolithic zip (every platform) - handy for tests / other tooling.
 $(BUILDDIR)/cc65/fsroot: cc65.wasi
-	mkdir -p $@/share/cc65/cfg $@/share/cc65/lib $@/share/cc65/target
+	rm -rf $@ && mkdir -p $@/share/cc65/cfg $@/share/cc65/lib $@/share/cc65/target
 	cp -rp $(BUILDDIR)/cc65/include $(BUILDDIR)/cc65/asminc $@/share/cc65/
 	cp -rp $(BUILDDIR)/cc65/cfg/* $@/share/cc65/cfg/
 	cp -rp $(BUILDDIR)/cc65/lib/* $@/share/cc65/lib/
 	cp -rpf $(BUILDDIR)/cc65/target/* $@/share/cc65/target/
 
-cc65: cc65.wasi $(FSDIR)/cc65-fs.zip
+$(BUILDDIR)/fs65-%/fsroot: cc65.wasi
+	rm -rf $@ && mkdir -p $@/share/cc65/cfg $@/share/cc65/lib $@/share/cc65/target
+	cp -rp $(BUILDDIR)/cc65/include $(BUILDDIR)/cc65/asminc $@/share/cc65/
+	cd $(BUILDDIR)/cc65 && \
+	case $* in \
+	nes)       c="cfg/nes*";          l="lib/nes*";        t="target/nes";; \
+	pce)       c="cfg/pce*";          l="lib/pce*";        t="target/pce";; \
+	c64)       c="cfg/c64*";          l="lib/c64*";        t="target/c64";; \
+	vic20)     c="cfg/vic20*";        l="lib/vic20*";      t="target/vic20";; \
+	apple2)    c="cfg/apple2*";       l="lib/apple2*";     t="target/apple2 target/apple2enh";; \
+	atari8)    c="cfg/atari.cfg cfg/atari-*.cfg cfg/atarixl*"; l="lib/atari.lib lib/atarixl.lib"; t="target/atari target/atarixl";; \
+	atari2600) c="cfg/atari2600*";    l="lib/atari2600*";  t="";; \
+	none)      c="";                  l="lib/none.lib";    t="";; \
+	esac; \
+	for f in $$c; do cp -rp $$f $@/share/cc65/cfg/; done; \
+	for f in $$l; do cp -rp $$f $@/share/cc65/lib/; done; \
+	for f in $$t; do cp -rp $$f $@/share/cc65/target/; done
+
+$(FSDIR)/cc65-fs-%.zip: $(BUILDDIR)/fs65-%/fsroot
+	cd $< && zip -qr $(abspath $@) .
+
+cc65: cc65.wasi $(FSDIR)/cc65-fs.zip $(CC65_PLATFORMS:%=$(FSDIR)/cc65-fs-%.zip)
 	cp $(BUILDDIR)/cc65/bin/cc65.wasm $(WASMDIR)/cc65.wasm
 	cp $(BUILDDIR)/cc65/bin/ca65.wasm $(WASMDIR)/ca65.wasm
 	cp $(BUILDDIR)/cc65/bin/ld65.wasm $(WASMDIR)/ld65.wasm
@@ -419,7 +450,7 @@ test.nesasm: nesasm
 test.cc65: cc65
 	rm -fr $(BUILDDIR)/test-cc65 && mkdir -p $(BUILDDIR)/test-cc65
 	cp $(WASMDIR)/cc65.wasm $(WASMDIR)/ca65.wasm $(WASMDIR)/ld65.wasm tests/cc65/*.c $(BUILDDIR)/test-cc65/
-	unzip -oq $(FSDIR)/cc65-fs.zip -d $(BUILDDIR)/test-cc65
+	unzip -oq $(FSDIR)/cc65-fs-nes.zip -d $(BUILDDIR)/test-cc65
 	cd $(BUILDDIR)/test-cc65 && $(WASIRUN) --dir=.::/ cc65.wasm -t nes -T -o test.s test.c
 	cd $(BUILDDIR)/test-cc65 && $(WASIRUN) --dir=.::/ ca65.wasm -o test.o test.s
 	cd $(BUILDDIR)/test-cc65 && $(WASIRUN) --dir=.::/ ld65.wasm -t nes -o test.nes test.o /share/cc65/lib/nes.lib
