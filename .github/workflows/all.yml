@@ -1,4 +1,4 @@
-name: Build with Emscripten
+name: Build compilers (WASI + Emscripten)
 
 on:
   push:
@@ -8,13 +8,67 @@ on:
     branches:
       - master
 
+env:
+  WASI_SDK_VERSION: 25
+  WASI_SDK_DIR: /opt/wasi-sdk
+
 jobs:
   build:
     runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: Init submodules
+        run: git submodule update --init --recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential autoconf automake libtool \
+            bison flex re2c nasm texinfo zlib1g-dev libboost-all-dev \
+            libfl-dev ccache zip unzip
+
+      - name: Cache wasi-sdk
+        id: wasi-sdk-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.WASI_SDK_DIR }}
+          key: wasi-sdk-${{ env.WASI_SDK_VERSION }}-linux
+
+      - name: Install wasi-sdk
+        if: steps.wasi-sdk-cache.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_VERSION}/wasi-sdk-${WASI_SDK_VERSION}.0-x86_64-linux.tar.gz
+          sudo mkdir -p $(dirname $WASI_SDK_DIR)
+          sudo tar xzf wasi-sdk-${WASI_SDK_VERSION}.0-x86_64-linux.tar.gz -C $(dirname $WASI_SDK_DIR)
+          sudo mv $(dirname $WASI_SDK_DIR)/wasi-sdk-${WASI_SDK_VERSION}.0 $WASI_SDK_DIR
+
+      - name: Verify wasi-sdk
+        run: $WASI_SDK_DIR/bin/clang --version
+
+      - name: Install wasmtime
+        run: |
+          curl -sSfL https://github.com/bytecodealliance/wasmtime/releases/download/v25.0.2/wasmtime-v25.0.2-x86_64-linux.tar.xz | tar xJ
+          sudo install wasmtime-v25.0.2-x86_64-linux/wasmtime /usr/local/bin/wasmtime
+          wasmtime --version
+
+      - name: Add wasm32-wasip1 Rust target
+        run: rustup target add wasm32-wasip1
+
+      # ---- WASI tools ----
+
+      - name: Build WASI tools
+        run: make -k WASI_SDK=$WASI_SDK_DIR acme dasm yasm vasm zmac naken_asm \
+          c2t makewav merlin32 smlrc nesasm cc2600 cc7800 nesfab cc65
+        if: success() || failure()
+
+      - name: Run WASI tests
+        run: make -k WASI_SDK=$WASI_SDK_DIR test
+        if: success() || failure()
+
+      # ---- Emscripten tools (not yet converted to WASI) ----
 
       - name: Setup emsdk
         uses: mymindstorm/setup-emsdk@v11
@@ -29,52 +83,16 @@ jobs:
       - name: Verify emsdk
         run: emcc -v
 
-      - name: Install dependencies
-        run: |
-          # Install required dependencies
-          sudo apt-get update
-          sudo apt-get install -y build-essential libboost-graph-dev nasm flex bison texinfo zlib1g-dev ccache libfl-dev
-
-      - name: Init submodules
-        run: |
-          # Initialize and update Git submodules
-          git submodule init
-          git submodule update
-
-      - name: Build zmac
-        run: make zmac
-        if: success() || failure()
-
-      - name: Build merlin32
-        run: make merlin32
-        if: success() || failure()
-
-      - name: Build c2t
-        run: make c2t
-        if: success() || failure()
-
-      - name: Build makewav
-        run: make makewav
-        if: success() || failure()
-
-      - name: Build dasm
-        run: make dasm
-        if: success() || failure()
-
-      - name: Build wiz
-        run: make wiz
+      - name: Build 6809tools
+        run: make 6809tools
         if: success() || failure()
 
       - name: Build fastbasic
         run: make fastbasic
         if: success() || failure()
 
-      - name: Build CC65
-        run: make cc65
-        if: success() || failure()
-
-      - name: Build 6809tools
-        run: make 6809tools
+      - name: Build wiz
+        run: make wiz
         if: success() || failure()
 
       - name: Build verilator
@@ -85,9 +103,9 @@ jobs:
         run: make sdcc
         if: success() || failure()
 
-      - name: Publish Artifacts
-        uses: actions/upload-artifact@v2
-        if: success() || failure()
-        with:
-          name: compilers_wasm_js_fs
-          path: output/
+#      - name: Publish Artifacts
+#        uses: actions/upload-artifact@v4
+#        if: success() || failure()
+#        with:
+#          name: compilers_wasm_js_fs
+#          path: output/

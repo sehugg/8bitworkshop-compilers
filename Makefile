@@ -19,6 +19,13 @@ WASI_CFLAGS = --sysroot=$(WASI_SYSROOT)
 NEW_CONFIG_SUB = $(shell ls /opt/homebrew/share/automake-*/config.sub /usr/share/automake-*/config.sub 2>/dev/null | tail -1)
 NEW_CONFIG_GUESS = $(shell ls /opt/homebrew/share/automake-*/config.guess /usr/share/automake-*/config.guess 2>/dev/null | tail -1)
 
+# boost headers for nesfab: Homebrew on macOS, apt (/usr/include) on Linux.
+# Probe for boost/version.hpp directly rather than trusting `brew --prefix`,
+# which can fail (e.g. unwritable brew cache); fall back to /usr/include.
+BOOST_CANDIDATES = $(foreach d,$(shell brew --prefix boost 2>/dev/null) \
+	/opt/homebrew/opt/boost /usr/local/opt/boost /usr/local /usr,$(d)/include)
+BOOST_INCLUDE ?= $(firstword $(foreach d,$(BOOST_CANDIDATES),$(if $(wildcard $(d)/boost/version.hpp),$(d))) /usr/include)
+
 ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 c2t makewav fastbasic dasm Silice wiz cc2600 cc7800 nesfab
 
 .PHONY: clean clobber prepare $(ALLTARGETS) test test.acme test.dasm test.yasm \
@@ -431,7 +438,7 @@ cc7800: cc7800.wasi cc7800.fsroot $(FSDIR)/cc7800-fs.zip
 
 nesfab.wasi: copy.nesfab
 	cd $(BUILDDIR)/nesfab && make -j 4 ARCH=WASI wasi \
-		WASI_SDK_PATH=$(WASI_SDK) OBJDIR=obj_wasi
+		WASI_SDK_PATH=$(WASI_SDK) OBJDIR=obj_wasi BOOST_INCLUDE=$(BOOST_INCLUDE)
 	cp $(BUILDDIR)/nesfab/nesfab.wasm $(WASMDIR)/nesfab.wasm
 
 nesfab.fsroot: copy.nesfab
