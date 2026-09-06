@@ -64,9 +64,6 @@
 [submodule "acme"]
 	path = acme
 	url = https://github.com/sehugg/acme
-[submodule "tinycc"]
-	path = tinycc
-	url = ./tinycc
 [submodule "cc2600"]
 	path = cc2600
 	url = https://github.com/steux/cc2600

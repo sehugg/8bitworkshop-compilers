@@ -9,8 +9,7 @@ on:
       - master
 
 env:
-  WASI_SDK_VERSION: 25
-  WASI_SDK_DIR: /opt/wasi-sdk
+  WASI_SDK_VERSION: 33
 
 jobs:
   build:
@@ -30,20 +29,15 @@ jobs:
             bison flex re2c nasm texinfo zlib1g-dev libboost-all-dev \
             libfl-dev ccache zip unzip
 
-      - name: Cache wasi-sdk
-        id: wasi-sdk-cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.WASI_SDK_DIR }}
-          key: wasi-sdk-${{ env.WASI_SDK_VERSION }}-linux
+      - name: Set WASI_SDK_DIR
+        run: echo "WASI_SDK_DIR=$HOME/wasi-sdk" >> $GITHUB_ENV
 
       - name: Install wasi-sdk
-        if: steps.wasi-sdk-cache.outputs.cache-hit != 'true'
         run: |
           wget -q https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_VERSION}/wasi-sdk-${WASI_SDK_VERSION}.0-x86_64-linux.tar.gz
-          sudo mkdir -p $(dirname $WASI_SDK_DIR)
-          sudo tar xzf wasi-sdk-${WASI_SDK_VERSION}.0-x86_64-linux.tar.gz -C $(dirname $WASI_SDK_DIR)
-          sudo mv $(dirname $WASI_SDK_DIR)/wasi-sdk-${WASI_SDK_VERSION}.0 $WASI_SDK_DIR
+          mkdir -p $(dirname $WASI_SDK_DIR)
+          tar xzf wasi-sdk-${WASI_SDK_VERSION}.0-x86_64-linux.tar.gz -C $(dirname $WASI_SDK_DIR)
+          mv $(dirname $WASI_SDK_DIR)/wasi-sdk-${WASI_SDK_VERSION}.0-x86_64-linux $WASI_SDK_DIR
 
       - name: Verify wasi-sdk
         run: $WASI_SDK_DIR/bin/clang --version
@@ -66,41 +60,6 @@ jobs:
 
       - name: Run WASI tests
         run: make -k WASI_SDK=$WASI_SDK_DIR test
-        if: success() || failure()
-
-      # ---- Emscripten tools (not yet converted to WASI) ----
-
-      - name: Setup emsdk
-        uses: mymindstorm/setup-emsdk@v11
-        with:
-          # Make sure to set a version number!
-          version: 3.1.38
-          # This is the name of the cache folder.
-          # The cache folder will be placed in the build directory,
-          #  so make sure it doesn't conflict with anything!
-          actions-cache-folder: 'emsdk-cache'
-
-      - name: Verify emsdk
-        run: emcc -v
-
-      - name: Build 6809tools
-        run: make 6809tools
-        if: success() || failure()
-
-      - name: Build fastbasic
-        run: make fastbasic
-        if: success() || failure()
-
-      - name: Build wiz
-        run: make wiz
-        if: success() || failure()
-
-      - name: Build verilator
-        run: make verilator
-        if: success() || failure()
-
-      - name: Build SDCC
-        run: make sdcc
         if: success() || failure()
 
 #      - name: Publish Artifacts
