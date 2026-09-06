@@ -23,11 +23,11 @@ ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 c2t mak
 
 .PHONY: clean clobber prepare $(ALLTARGETS) test test.acme test.dasm test.yasm \
 	test.vasm test.zmac test.naken_asm test.c2t test.makewav test.merlin32 \
-	test.smlrc test.cc2600 test.cc7800 test.nesfab test.cc65
+	test.smlrc test.cc2600 test.cc7800 test.nesfab test.cc65 test.nesasm
 
 test: test.acme test.dasm test.yasm test.vasm test.zmac test.naken_asm \
 	test.c2t test.makewav test.merlin32 test.smlrc \
-	test.cc2600 test.cc7800 test.nesfab test.cc65
+	test.cc2600 test.cc7800 test.nesfab test.cc65 test.nesasm
 	@echo 'All tests passed.'
 
 all: $(ALLTARGETS)
@@ -259,13 +259,20 @@ smlrc.fsroot:
 smlrc: smlrc.wasi smlrc.fsroot $(FSDIR)/smlrc-fs.zip
 	cp $(BUILDDIR)/SmallerC/smlrc.wasm $(WASMDIR)/smlrc.wasm
 
-### nesasm
+### nesasm (WASI)
 
-nesasm.wasm: copy.nesasm
-	sed -i 's/^CC/#CC/g' $(BUILDDIR)/nesasm/source/Makefile
-	cd $(BUILDDIR)/nesasm/source && emmake make EMCC_CFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=nesasm"
+# old K&R-style C: NULL-to-int assigns etc.; system() (develo box) is
+# stubbed out -- not available in WASI
+NESASM_CFLAGS = -O2 -std=gnu99 -Wno-error=incompatible-function-pointer-types \
+	-Wno-error=int-conversion -Wno-error=implicit-function-declaration -Wno-error=implicit-int
 
-nesasm: nesasm.wasm $(BUILDDIR)/nesasm/nesasm.wasm
+nesasm.wasi: copy.nesasm
+	sed -i.bak 's/^\t*\tsystem(cmd);/\t\t\/* system() unavailable in WASI *\//' $(BUILDDIR)/nesasm/source/main.c
+	cd $(BUILDDIR)/nesasm/source && PATH="$(WASI_SDK)/bin:$$PATH" \
+		make CC="$(WASI_CC) $(WASI_CFLAGS)" CFLAGS="$(NESASM_CFLAGS)"
+
+nesasm: nesasm.wasi
+	cp $(BUILDDIR)/nesasm/nesasm $(WASMDIR)/nesasm.wasm
 
 ### c2t (WASI)
 # c2t.h ships pre-generated in the submodule (loader code, built with cl65);
@@ -401,6 +408,13 @@ nesfab.fsroot: copy.nesfab
 	cp -rp nesfab/lib $(BUILDDIR)/nesfab/fsroot/
 
 nesfab: nesfab.wasi nesfab.fsroot $(FSDIR)/nesfab-fs.zip
+
+test.nesasm: nesasm
+	rm -fr $(BUILDDIR)/test-nesasm && mkdir -p $(BUILDDIR)/test-nesasm
+	cp $(WASMDIR)/nesasm.wasm tests/nesasm/test.asm tests/nesasm/chr.bin $(BUILDDIR)/test-nesasm/
+	cd $(BUILDDIR)/test-nesasm && $(WASIRUN) --dir=. nesasm.wasm test.asm
+	cmp tests/nesasm/test.expected $(BUILDDIR)/test-nesasm/test.nes
+	@echo 'test.nesasm OK'
 
 test.cc65: cc65
 	rm -fr $(BUILDDIR)/test-cc65 && mkdir -p $(BUILDDIR)/test-cc65
