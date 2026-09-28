@@ -26,7 +26,8 @@ BOOST_CANDIDATES = $(foreach d,$(shell brew --prefix boost 2>/dev/null) \
 	/opt/homebrew/opt/boost /usr/local/opt/boost /usr/local /usr,$(d)/include)
 BOOST_INCLUDE ?= $(firstword $(foreach d,$(BOOST_CANDIDATES),$(if $(wildcard $(d)/boost/version.hpp),$(d))) /usr/include)
 
-ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 c2t makewav fastbasic dasm Silice wiz cc2600 cc7800 nesfab
+ALLTARGETS=cc65 6809tools yasm verilator zmac smlrc nesasm merlin32 c2t makewav fastbasic dasm Silice wiz cc2600 cc7800 nesfab
+#TODO: add sdcc when wasmtime upgraded and more browsers have exception support
 
 .PHONY: clean clobber prepare $(ALLTARGETS) test test.acme test.dasm test.yasm \
 	test.vasm test.zmac test.naken_asm test.c2t test.makewav test.merlin32 \
@@ -34,7 +35,7 @@ ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 c2t mak
 
 test: test.acme test.dasm test.yasm test.vasm test.zmac test.naken_asm \
 	test.c2t test.makewav test.merlin32 test.smlrc \
-	test.cc2600 test.cc7800 test.nesfab test.cc65 test.nesasm test.sdcc
+	test.cc2600 test.cc7800 test.nesfab test.cc65 test.nesasm # test.sdcc
 	@echo 'All tests passed.'
 
 all: $(ALLTARGETS)
@@ -333,14 +334,14 @@ smlrc.wasi: copy.SmallerC
 		make smlrc CC="$(WASI_CC) $(WASI_CFLAGS)" CFLAGS="-O2 -DPATH_PREFIX=\"/share\""
 	cp $(BUILDDIR)/SmallerC/smlrc $(BUILDDIR)/SmallerC/smlrc.wasm
 
-smlrc.fsroot:
+$(BUILDDIR)/smlrc/fsroot:
 	rm -fr $(BUILDDIR)/smlrc/fsroot
 	mkdir -p $(BUILDDIR)/smlrc/fsroot/include $(BUILDDIR)/smlrc/fsroot/lib
 	cp -rL SmallerC/v0100/include/. $(BUILDDIR)/smlrc/fsroot/include/
 	cp -rL SmallerC/v0100/lib/. $(BUILDDIR)/smlrc/fsroot/lib/
 	rm -f $(BUILDDIR)/smlrc/fsroot/lib/lc?.a $(BUILDDIR)/smlrc/fsroot/lib/*.exe
 
-smlrc: smlrc.wasi smlrc.fsroot $(FSDIR)/smlrc-fs.zip
+smlrc: smlrc.wasi $(FSDIR)/smlrc-fs.zip
 	cp $(BUILDDIR)/SmallerC/smlrc.wasm $(WASMDIR)/smlrc.wasm
 
 ### nesasm (WASI)
@@ -459,11 +460,11 @@ cc2600.wasi: copy.cc2600
 	cd $(BUILDDIR)/cc2600 && cargo build --release --target wasm32-wasip1
 	cp $(BUILDDIR)/cc2600/target/wasm32-wasip1/release/cc2600.wasm $(WASMDIR)/cc2600.wasm
 
-cc2600.fsroot: copy.cc2600
+$(BUILDDIR)/cc2600/fsroot: copy.cc2600
 	rm -fr $(BUILDDIR)/cc2600/fsroot && mkdir -p $(BUILDDIR)/cc2600/fsroot
 	cp -rp cc2600/headers $(BUILDDIR)/cc2600/fsroot/
 
-cc2600: cc2600.wasi cc2600.fsroot $(FSDIR)/cc2600-fs.zip
+cc2600: cc2600.wasi $(FSDIR)/cc2600-fs.zip
 
 ### cc7800 (WASI, Rust)
 # cc7800 depends on a sibling ../cc6502 crate; the cc6502 submodule is copied there
@@ -472,11 +473,11 @@ cc7800.wasi: copy.cc7800 copy.cc6502
 	cd $(BUILDDIR)/cc7800 && cargo build --release --target wasm32-wasip1
 	cp $(BUILDDIR)/cc7800/target/wasm32-wasip1/release/cc7800.wasm $(WASMDIR)/cc7800.wasm
 
-cc7800.fsroot: copy.cc7800
+$(BUILDDIR)/cc7800/fsroot: copy.cc7800
 	rm -fr $(BUILDDIR)/cc7800/fsroot && mkdir -p $(BUILDDIR)/cc7800/fsroot
 	cp -rp cc7800/headers $(BUILDDIR)/cc7800/fsroot/
 
-cc7800: cc7800.wasi cc7800.fsroot $(FSDIR)/cc7800-fs.zip
+cc7800: cc7800.wasi $(FSDIR)/cc7800-fs.zip
 
 ### nesfab (WASI)
 # uses the sehugg/nesfab fork's built-in ARCH=WASI target (wasm EH, NO_THREAD);
@@ -487,11 +488,11 @@ nesfab.wasi: copy.nesfab
 		WASI_SDK_PATH=$(WASI_SDK) OBJDIR=obj_wasi BOOST_INCLUDE=$(BOOST_INCLUDE)
 	cp $(BUILDDIR)/nesfab/nesfab.wasm $(WASMDIR)/nesfab.wasm
 
-nesfab.fsroot: copy.nesfab
+$(BUILDDIR)/nesfab/fsroot: copy.nesfab
 	rm -fr $(BUILDDIR)/nesfab/fsroot && mkdir -p $(BUILDDIR)/nesfab/fsroot
 	cp -rp nesfab/lib $(BUILDDIR)/nesfab/fsroot/
 
-nesfab: nesfab.wasi nesfab.fsroot $(FSDIR)/nesfab-fs.zip
+nesfab: nesfab.wasi $(FSDIR)/nesfab-fs.zip
 
 test.nesasm: nesasm
 	rm -fr $(BUILDDIR)/test-nesasm && mkdir -p $(BUILDDIR)/test-nesasm
@@ -570,12 +571,12 @@ Silice.wasm: copy.Silice
 	cd $(BUILDDIR)/Silice/BUILD/build-silice && emmake cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" ../..
 	cd $(BUILDDIR)/Silice/BUILD/build-silice && emmake make -j8 EMCC_CFLAGS="$(EMCC_FLAGS) -s DISABLE_EXCEPTION_CATCHING=0 -s EXPORT_NAME=silice"
 
-Silice.fsroot:
+$(BUILDDIR)/Silice/fsroot:
 	rm -fr $(BUILDDIR)/Silice/fsroot
 	mkdir -p $(BUILDDIR)/Silice/fsroot
 	ln -s $(CURDIR)/Silice/frameworks $(BUILDDIR)/Silice/fsroot
 
-Silice: Silice.wasm $(BUILDDIR)/Silice/BUILD/build-silice/silice.wasm Silice.fsroot $(FSDIR)/fsSilice.js
+Silice: Silice.wasm $(BUILDDIR)/Silice/BUILD/build-silice/silice.wasm $(BUILDDIR)/Silice/fsroot $(FSDIR)/fsSilice.js
 
 ### wiz
 
@@ -587,12 +588,12 @@ wiz.wasm: copy.wiz
 	sed -i 's/ -s WASM=0 / /g' $(BUILDDIR)/wiz/Makefile
 	cd $(BUILDDIR)/wiz && emmake make CC=emcc LXXFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=wiz"
 
-wiz.fsroot:
+$(BUILDDIR)/wiz/fsroot:
 	rm -fr $(BUILDDIR)/wiz/fsroot
 	mkdir -p $(BUILDDIR)/wiz/fsroot
 	ln -s $(CURDIR)/wiz/common $(BUILDDIR)/wiz/fsroot
 
-wiz: wiz.wasm $(BUILDDIR)/wiz/bin/wiz.wasm wiz.fsroot $(FSDIR)/fswiz.js
+wiz: wiz.wasm $(BUILDDIR)/wiz/bin/wiz.wasm $(BUILDDIR)/wiz/fsroot $(FSDIR)/fswiz.js
 
 ### armips
 
@@ -708,9 +709,9 @@ tinycc.wasm: copy.tinycc
 	cd $(BUILDDIR)/tinycc && emconfigure ./configure --cpu=i386 #--cross-prefix=$(CURDIR)/tinycc
 	cd $(BUILDDIR)/tinycc && emmake make EXESUF=.js tccdefs_.h arm-tcc.js LDFLAGS="$(EMCC_FLAGS) -s EXPORT_NAME=armtcc"
 
-tinycc.fsroot:
+$(BUILDDIR)/tinycc/fsroot:
 	rm -fr $(BUILDDIR)/tinycc/fsroot
 	mkdir -p $(BUILDDIR)/tinycc/fsroot
 	cp -pv tinycc/*.o tinycc/*.a $(BUILDDIR)/tinycc/fsroot
 
-tinycc: tinycc.build tinycc.wasm tinycc.fsroot $(BUILDDIR)/tinycc/arm-tcc.wasm
+tinycc: tinycc.build tinycc.wasm $(BUILDDIR)/tinycc/fsroot $(BUILDDIR)/tinycc/arm-tcc.wasm

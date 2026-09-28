@@ -53,13 +53,20 @@ jobs:
 
       # ---- WASI tools ----
 
-      - name: Build WASI tools
-        run: make -k WASI_SDK=$WASI_SDK_DIR acme dasm yasm vasm zmac naken_asm \
-          c2t makewav merlin32 smlrc nesasm cc2600 cc7800 cc65 nesfab
+      - name: Build WASI tools 1
+        run: make -k WASI_SDK=$WASI_SDK_DIR -j8 prepare acme dasm vasm zmac naken_asm c2t makewav merlin32 smlrc nesasm
+        if: success() || failure()
+
+      - name: Build WASI tools 2
+        run: make -k WASI_SDK=$WASI_SDK_DIR -j4 prepare yasm cc2600 cc7800 cc65 nesfab
         if: success() || failure()
 
       - name: Run WASI tests
         run: make -k WASI_SDK=$WASI_SDK_DIR test
+        if: success() || failure()
+
+      - name: Show WASM file hashes
+        run: md5sum output/wasm/*.wasm
         if: success() || failure()
 
 #      - name: Publish Artifacts
