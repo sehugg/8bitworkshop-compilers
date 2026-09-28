@@ -2,3 +2,5 @@
 bin/
 embuild/
 output/
+copy.cc65
+cc65.wasi

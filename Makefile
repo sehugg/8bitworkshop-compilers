@@ -51,6 +51,7 @@ check.emcc:
 clean:
 	rm -fr $(BUILDDIR)
 	rm -fr $(OUTPUTDIR)
+	rm -f copy.cc65 cc65.wasi
 
 clobber: clean
 	git submodule foreach --recursive git clean -xfd
@@ -91,9 +92,22 @@ EMCC_FLAGS= -Os -s PURE_WASI=1-s FORCE_FILESYSTEM=1
 # must happen after the native one (it recompiles from source).
 # lib/ and target/ are gitignored upstream, so they cannot come from the
 # submodule working tree - always build them fresh.
-cc65.wasi: copy.cc65
+# libsrc needs a native assembler/compiler *and* ld65 (for the driver
+# modules); build all four so it never falls back to a system cc65.
+# copy.cc65 and cc65.wasi are real stamp files, so the extract/build below
+# only re-runs when the cc65 submodule HEAD (or this Makefile) changes.
+copy.cc65: prepare
+	@rev="$$(git -C cc65 rev-parse HEAD)"; \
+	if [ "$$rev" != "$$(cat $@ 2>/dev/null)" ] || [ ! -d $(BUILDDIR)/cc65/src ]; then \
+		echo "Copying cc65 ($$rev)"; \
+		rm -rf $(BUILDDIR)/cc65; mkdir -p $(BUILDDIR)/cc65; \
+		git -C cc65 archive HEAD | tar x -C $(BUILDDIR)/cc65; \
+		printf '%s\n' "$$rev" > $@; \
+	fi
+
+cc65.wasi: copy.cc65 $(MAKEFILE_LIST)
 	cd $(BUILDDIR)/cc65/src && make mostlyclean
-	cd $(BUILDDIR)/cc65/src && make -j 4 ar65 ca65 cc65
+	cd $(BUILDDIR)/cc65/src && make -j 4 ar65 ca65 cc65 ld65
 	cd $(BUILDDIR)/cc65/libsrc && PATH="$(BUILDDIR)/cc65/bin:$$PATH" make -j 4
 	cd $(BUILDDIR)/cc65/src && make mostlyclean
 	cd $(BUILDDIR)/cc65/src && PATH="$(WASI_SDK)/bin:$$PATH" \
@@ -103,7 +117,11 @@ cc65.wasi: copy.cc65
 		USER_CFLAGS="-O2 -D_WASI_EMULATED_GETPID" \
 		LDLIBS="-lwasi-emulated-getpid" \
 		EXE_SUFFIX=.wasm \
-		BUILD_ID="Git $$(cd $(CURDIR)/cc65 && git rev-parse --short HEAD)"
+		BUILD_ID="N/A"
+	@touch $@
+# NB: pin BUILD_ID. If left unset, cc65's Makefile runs git in the extracted
+# copy, which walks up to this repo's .git and embeds *our* HEAD hash - the
+# version banner then changes on every commit and breaks the goldens.
 
 # src/Makefile honors CC/AR/USER_CFLAGS/EXE_SUFFIX overrides; LLVM ar is
 # required (host ar corrupts wasm object archives). Compile-time data dirs
@@ -147,7 +165,7 @@ $(BUILDDIR)/fs65-%/fsroot: cc65.wasi
 $(FSDIR)/cc65-fs-%.zip: $(BUILDDIR)/fs65-%/fsroot
 	cd $< && zip -qr $(abspath $@) .
 
-cc65: cc65.wasi $(FSDIR)/cc65-fs.zip $(CC65_PLATFORMS:%=$(FSDIR)/cc65-fs-%.zip)
+cc65: cc65.wasi $(CC65_PLATFORMS:%=$(FSDIR)/cc65-fs-%.zip) # $(FSDIR)/cc65-fs.zip 
 	cp $(BUILDDIR)/cc65/bin/cc65.wasm $(WASMDIR)/cc65.wasm
 	cp $(BUILDDIR)/cc65/bin/ca65.wasm $(WASMDIR)/ca65.wasm
 	cp $(BUILDDIR)/cc65/bin/ld65.wasm $(WASMDIR)/ld65.wasm
