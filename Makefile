@@ -30,11 +30,11 @@ ALLTARGETS=cc65 sdcc 6809tools yasm verilator zmac smlrc nesasm merlin32 c2t mak
 
 .PHONY: clean clobber prepare $(ALLTARGETS) test test.acme test.dasm test.yasm \
 	test.vasm test.zmac test.naken_asm test.c2t test.makewav test.merlin32 \
-	test.smlrc test.cc2600 test.cc7800 test.nesfab test.cc65 test.nesasm
+	test.smlrc test.cc2600 test.cc7800 test.nesfab test.cc65 test.nesasm test.sdcc
 
 test: test.acme test.dasm test.yasm test.vasm test.zmac test.naken_asm \
 	test.c2t test.makewav test.merlin32 test.smlrc \
-	test.cc2600 test.cc7800 test.nesfab test.cc65 test.nesasm
+	test.cc2600 test.cc7800 test.nesfab test.cc65 test.nesasm test.sdcc
 	@echo 'All tests passed.'
 
 all: $(ALLTARGETS)
@@ -51,7 +51,7 @@ check.emcc:
 clean:
 	rm -fr $(BUILDDIR)
 	rm -fr $(OUTPUTDIR)
-	rm -f copy.cc65 cc65.wasi
+	rm -f copy.cc65 cc65.wasi copy.sdcc sdcc.native sdcc.wasi
 
 clobber: clean
 	git submodule foreach --recursive git clean -xfd
@@ -170,63 +170,90 @@ cc65: cc65.wasi $(CC65_PLATFORMS:%=$(FSDIR)/cc65-fs-%.zip) # $(FSDIR)/cc65-fs.zi
 	cp $(BUILDDIR)/cc65/bin/ca65.wasm $(WASMDIR)/ca65.wasm
 	cp $(BUILDDIR)/cc65/bin/ld65.wasm $(WASMDIR)/ld65.wasm
 
-### sdcc
+### sdcc (WASI)
 
-SDCC_CONFIG=\
-  --disable-mcs51-port   \
-  --enable-z80-port      \
-  --enable-z180-port     \
-  --disable-r2k-port     \
-  --disable-r3ka-port    \
-  --enable-gbz80-port    \
-  --disable-tlcs90-port  \
-  --enable-ez80_z80-port \
-  --disable-ds390-port   \
-  --disable-ds400-port   \
-  --disable-pic14-port   \
-  --disable-pic16-port   \
-  --disable-hc08-port    \
-  --disable-s08-port     \
-  --disable-stm8-port    \
-  --disable-pdk13-port   \
-  --disable-pdk14-port   \
-  --disable-pdk15-port   \
-  --disable-pdk16-port   \
-  --enable-mos6502-port    \
-  --enable-non-free      \
-  --disable-doc          \
-  --disable-libgc        
+# Ports: z80 family, Game Boy (sm83) and 6502. The non-free libs are PIC-only.
+SDCC_PORTS = \
+  --disable-mcs51-port --enable-z80-port --enable-z180-port \
+  --disable-r2k-port --disable-r2ka-port --disable-r3ka-port \
+  --disable-r4k-port --disable-r5k-port --disable-r6k-port \
+  --enable-sm83-port --disable-tlcs90-port --enable-ez80-port \
+  --disable-z80n-port --disable-r800-port --disable-ds390-port \
+  --disable-ds400-port --disable-pic14-port --disable-pic16-port \
+  --disable-hc08-port --disable-s08-port --disable-stm8-port \
+  --disable-pdk13-port --disable-pdk14-port --disable-pdk15-port \
+  --enable-mos6502-port --enable-mos65c02-port --disable-huc6280-port \
+  --disable-f8-port --disable-f8l-port \
+  --disable-ucsim --disable-sdcdb --disable-doc --disable-non-free \
+  --prefix=/
 
-SDCC_EMCC_CONFIG=--disable-ucsim --disable-device-lib --disable-packihx --disable-sdcpp --disable-sdcdb --disable-sdbinutils
+# zlib is only needed by sdcpp/sdbinutils, which aren't built for WASI.
+SDCC_WASI_CONFIG = --host=wasm32-wasi --build=$$(./config.guess) \
+  --disable-device-lib --disable-packihx --disable-sdcpp \
+  --disable-sdbinutils --without-ccache ac_cv_header_zlib_h=yes
 
-SDCC_FLAGS= \
-	-s USE_BOOST_HEADERS=1 \
-	-s ERROR_ON_UNDEFINED_SYMBOLS=0
+# C++ code throws (wasm EH), sdas uses setjmp (wasm sjlj). The EH feature
+# flag goes in CPPFLAGS too, since dependency generation runs cpp alone and
+# setjmp.h #errors without it. sdas Makefiles hardcode LIBS, so the extra
+# libraries go in LDFLAGS.
+SDCC_WASI_EH = -mexception-handling -mllvm -wasm-use-legacy-eh=false
+SDCC_WASI_ENV = \
+  CC="$(WASI_CC) $(WASI_CFLAGS)" CXX="$(WASI_CC)++ $(WASI_CFLAGS)" \
+  AR=$(WASI_SDK)/bin/llvm-ar RANLIB=$(WASI_SDK)/bin/llvm-ranlib \
+  STRIP=$(WASI_STRIP) \
+  CPPFLAGS="-mexception-handling -D_GNU_SOURCE -D_WASI_EMULATED_GETPID -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS -idirafter $(BOOST_INCLUDE)" \
+  CFLAGS="-O2 -mllvm -wasm-enable-sjlj $(SDCC_WASI_EH)" \
+  CXXFLAGS="-O2 -fwasm-exceptions $(SDCC_WASI_EH)" \
+  LDFLAGS="-fwasm-exceptions -Wl,-z,stack-size=8388608 -lsetjmp -lunwind -lwasi-emulated-getpid -lwasi-emulated-signal -lwasi-emulated-process-clocks"
 
-sdcc.build:
-	cd sdcc/sdcc && ./configure $(SDCC_CONFIG) && make
-	cd $(BUILDDIR)/sdcc/sdcc/support/sdbinutils && ./configure && make
-	cp -rp sdcc/sdcc/bin/makebin $(BUILDDIR)/sdcc/sdcc/bin/
-	cd $(BUILDDIR)/sdcc/sdcc && emconfigure ./configure $(SDCC_CONFIG) $(SDCC_EMCC_CONFIG) EMCC_FLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS)"
-	sed -i 's/#define HAVE_BACKTRACE_SYMBOLS_FD 1//g' $(BUILDDIR)/sdcc/sdcc/sdccconf.h
-	# can't generate multiple modules w/ different export names
-	cd $(BUILDDIR)/sdcc/sdcc/src && emmake make EMCC_FLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdcc" LDFLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdcc"
-	#cp $(BUILDDIR)/sdcc/sdcc/bin/sdcc* $(WASMDIR)
+# sdld picks its target from argv[0] (sdldz80, sdldgb, sdld6808 for 6502),
+# so it ships under each name.
+SDCC_WASI_TOOLS = sdasz80 sdasgb sdas6500 sdldz80 sdldgb sdld6808 makebin
 
-sdcc.asm:
-	cd $(BUILDDIR)/sdcc/sdcc/sdas/as6500 && emmake make EMCC_FLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdas6500" LDFLAGS="$(EMCC_FLAGS) $(SDCC_FLAGS) -s EXPORT_NAME=sdas6500"
+# The device libraries (Z80/GB/6502 code) are built by a native sdcc in
+# $(BUILDDIR)/sdcc; the wasm tools are built in a separate, freshly
+# extracted and patched copy in $(BUILDDIR)/sdcc-wasi.
+# copy.sdcc, sdcc.native and sdcc.wasi are stamp files, like cc65's.
+copy.sdcc: prepare
+	@rev="$$(git -C sdcc rev-parse HEAD)"; \
+	if [ "$$rev" != "$$(cat $@ 2>/dev/null)" ] || [ ! -d $(BUILDDIR)/sdcc/src ]; then \
+		echo "Copying sdcc ($$rev)"; \
+		rm -rf $(BUILDDIR)/sdcc; mkdir -p $(BUILDDIR)/sdcc; \
+		git -C sdcc archive HEAD | tar x -C $(BUILDDIR)/sdcc; \
+		printf '%s\n' "$$rev" > $@; \
+	fi
 
-sdcc.fsroot:
-	rm -fr $(BUILDDIR)/sdcc/fsroot
-	mkdir -p $(BUILDDIR)/sdcc/fsroot
-	ln -s $(CURDIR)/sdcc/sdcc/device/include $(BUILDDIR)/sdcc/fsroot/include
-	ln -s $(CURDIR)/sdcc/sdcc/device/lib/build $(BUILDDIR)/sdcc/fsroot/lib
+sdcc.native: copy.sdcc
+	cd $(BUILDDIR)/sdcc && ./configure $(SDCC_PORTS) CPPFLAGS="-idirafter $(BOOST_INCLUDE)"
+	cd $(BUILDDIR)/sdcc && make -j 8
+	rm -rf $(BUILDDIR)/sdcc/fsroot
+	cd $(BUILDDIR)/sdcc/device/include && make install DESTDIR=$(BUILDDIR)/sdcc/fsroot
+	mkdir -p $(BUILDDIR)/sdcc/fsroot/share/sdcc/lib
+	cp -rp $(BUILDDIR)/sdcc/device/lib/build/* $(BUILDDIR)/sdcc/fsroot/share/sdcc/lib/
+	touch $@
 
-sdcc: prepare copy.sdcc sdcc.build sdcc.asm sdcc.fsroot \
-	$(FSDIR)/fssdcc.js \
-	$(BUILDDIR)/sdcc/sdcc/src/sdcc.wasm \
-	$(BUILDDIR)/sdcc/sdcc/bin/sdas6500.wasm
-	$(EMSDK)/upstream/bin/wasm-opt --strip -Oz $(BUILDDIR)/sdcc/sdcc/src/sdcc.wasm -o $(WASMDIR)/sdcc.wasm
+sdcc.wasi: copy.sdcc patches/sdcc-wasi.patch $(MAKEFILE_LIST)
+	rm -rf $(BUILDDIR)/sdcc-wasi && mkdir -p $(BUILDDIR)/sdcc-wasi
+	git -C sdcc archive HEAD | tar x -C $(BUILDDIR)/sdcc-wasi
+	cd $(BUILDDIR)/sdcc-wasi && patch -p1 < $(CURDIR)/patches/sdcc-wasi.patch
+	cp $(NEW_CONFIG_SUB) $(NEW_CONFIG_GUESS) $(BUILDDIR)/sdcc-wasi/
+	cd $(BUILDDIR)/sdcc-wasi && PATH="$(WASI_SDK)/bin:$$PATH" \
+		./configure $(SDCC_PORTS) $(SDCC_WASI_CONFIG) $(SDCC_WASI_ENV)
+	cd $(BUILDDIR)/sdcc-wasi && PATH="$(WASI_SDK)/bin:$$PATH" \
+		make -j 8 sdcc-cc sdcc-as sdcc-ld sdcc-libs
+	touch $@
+
+$(BUILDDIR)/sdcc/fsroot: sdcc.native
+
+# /share/sdcc/{include,lib/<port>} are sdcc's built-in search paths (--prefix=/)
+$(FSDIR)/sdcc-fs.zip: $(BUILDDIR)/sdcc/fsroot
+	rm -f $@ && cd $< && zip -qr $@ .
+
+sdcc: sdcc.wasi $(FSDIR)/sdcc-fs.zip
+	$(WASI_STRIP) -o $(WASMDIR)/sdcc.wasm $(BUILDDIR)/sdcc-wasi/src/sdcc
+	for t in $(SDCC_WASI_TOOLS); do \
+		$(WASI_STRIP) -o $(WASMDIR)/$$t.wasm $(BUILDDIR)/sdcc-wasi/bin/$$t || exit 1; \
+	done
 
 ### 6809tools
 
@@ -482,6 +509,27 @@ test.cc65: cc65
 	cmp tests/cc65/test.s.expected $(BUILDDIR)/test-cc65/test.s
 	cmp tests/cc65/test.nes.expected $(BUILDDIR)/test-cc65/test.nes
 	@echo 'test.cc65 OK'
+
+# sdcc --c1mode reads preprocessed C from stdin and emits asm; the
+# library/crt0 come from sdcc-fs.zip at /share/sdcc/lib/<port>.
+# Each port: sdcc -> sdas -> sdld (argv[0] picks the target) -> .ihx
+SDCC_TEST_PORTS = z80:sdasz80:sdldz80 sm83:sdasgb:sdldgb mos6502:sdas6500:sdld6808
+
+test.sdcc: sdcc
+	rm -fr $(BUILDDIR)/test-sdcc && mkdir -p $(BUILDDIR)/test-sdcc
+	cp $(WASMDIR)/sdcc.wasm $(SDCC_WASI_TOOLS:%=$(WASMDIR)/%.wasm) tests/sdcc/test.c $(BUILDDIR)/test-sdcc/
+	unzip -oq $(FSDIR)/sdcc-fs.zip -d $(BUILDDIR)/test-sdcc
+	cd $(BUILDDIR)/test-sdcc && for p in $(SDCC_TEST_PORTS); do \
+		port=$${p%%:*}; t=$${p#*:}; as=$${t%%:*}; ld=$${t#*:}; \
+		$(WASIRUN) --dir=.::/ sdcc.wasm -m$$port --c1mode -o test-$$port.s < test.c && \
+		$(WASIRUN) --dir=.::/ $$as.wasm -plosgff test-$$port.rel test-$$port.s && \
+		$(WASIRUN) --dir=.::/ $$ld.wasm -i -b _CODE=0x0200 -b _DATA=0x8000 \
+			-k /share/sdcc/lib/$$port -l $$port test-$$port.ihx \
+			/share/sdcc/lib/$$port/crt0.rel test-$$port.rel > /dev/null || exit 1; \
+		cmp $(CURDIR)/tests/sdcc/test-$$port.s.expected test-$$port.s || exit 1; \
+		cmp $(CURDIR)/tests/sdcc/test-$$port.ihx.expected test-$$port.ihx || exit 1; \
+	done
+	@echo 'test.sdcc OK'
 
 test.cc2600: cc2600
 	rm -fr $(BUILDDIR)/test-cc2600 && mkdir -p $(BUILDDIR)/test-cc2600

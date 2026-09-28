@@ -1,0 +1,407 @@
+;--------------------------------------------------------
+; File Created by SDCC : free open source ISO C Compiler
+; Version 4.6.3 #0 (UNIX)
+;--------------------------------------------------------
+	.module test_mos6502
+	
+	.r6500
+;; Ordering of segments for the linker.
+	.area ZP      (PAG)
+	.area OSEG    (PAG, OVR)
+	.area _CODE
+	.area GSINIT
+	.area GSFINAL
+	.area CODE
+	.area RODATA
+	.area XINIT
+	.area _DATA
+	.area DATA
+	.area BSS
+	.optsdcc -mmos6502
+
+;--------------------------------------------------------
+; Public variables in this module
+;--------------------------------------------------------
+	.globl _main
+	.globl _mul
+	.globl _fib
+	.globl _memset
+	.globl _mul_PARM_2
+	.globl _mul_PARM_1
+	.globl _buf
+;--------------------------------------------------------
+; ZP ram data
+;--------------------------------------------------------
+	.area ZP      (PAG)
+_fib_sloc0_1_0:
+	.ds 2
+_mul_sloc0_1_0:
+	.ds 4
+_main_sloc0_1_0:
+	.ds 2
+_main_sloc1_1_0:
+	.ds 1
+_main_sloc2_1_0:
+	.ds 4
+;--------------------------------------------------------
+; overlayable items in ram
+;--------------------------------------------------------
+;--------------------------------------------------------
+; uninitialized external ram data
+;--------------------------------------------------------
+	.area BSS
+_buf::
+	.ds 16
+_mul_PARM_1:
+	.ds 4
+_mul_PARM_2:
+	.ds 4
+;--------------------------------------------------------
+; absolute external ram data
+;--------------------------------------------------------
+	.area DABS    (ABS)
+;--------------------------------------------------------
+; initialized external ram data
+;--------------------------------------------------------
+	.area DATA
+;--------------------------------------------------------
+; global & static initialisations
+;--------------------------------------------------------
+	.area _CODE
+	.area GSINIT
+	.area GSFINAL
+	.area GSINIT
+;--------------------------------------------------------
+; Home
+;--------------------------------------------------------
+	.area _CODE
+	.area _CODE
+;--------------------------------------------------------
+; code
+;--------------------------------------------------------
+	.area CODE
+;------------------------------------------------------------
+;Allocation info for local variables in function 'fib'
+;------------------------------------------------------------
+;sloc0         Allocated with name '_fib_sloc0_1_0'
+;n             Allocated to registers y x 
+;------------------------------------------------------------
+;	test.c: 6: int fib(int n) { return n < 2 ? n : fib(n-1) + fib(n-2); }
+;	genLabel
+;	Raw cost for generated ic 0 : (0, 0.000000) count=1.000000
+;	-----------------------------------------
+;	 function fib
+;	-----------------------------------------
+;	Register assignment is optimal.
+;	Stack space usage: 0 bytes.
+;	genFunction - rcv size = 2 big:0
+_fib:
+;	Raw cost for generated ic 1 : (0, 0.000000) count=1.000000
+;	genReceive
+;	Raw cost for generated ic 2 : (1, 2.000000) count=1.000000
+;	genCmp (<, size:2, sign:1, ifx:1)
+	tay
+	sec
+	sbc	#0x02
+	txa
+	sbc	#0x00
+	bvc	00113$
+	bpl	00104$
+	bmi	00103$
+00113$:
+	bmi	00104$
+;	Raw cost for generated ic 3 : (18, 23.400002) count=1.000000
+;	skipping generated iCode
+;	Raw cost for generated ic 4 : (0, 0.000000) count=1.000000
+;	genAssign
+;	m6502_copy
+;	Raw cost for generated ic 5 : (0, 0.000000) count=0.750000
+;	genGoto
+;	Raw cost for generated ic 6 : (3, 3.000000) count=0.750000
+;	genLabel
+00103$:
+;	Raw cost for generated ic 7 : (0, 0.000000) count=0.250000
+;	m6502_genMinus
+;	  genMinusDec - size=2  icount=1
+	tya
+	sec
+	sbc	#0x01
+	sta	*_fib_sloc0_1_0
+	txa
+	sbc	#0x00
+	sta	*(_fib_sloc0_1_0+1)
+;	Raw cost for generated ic 8 : (11, 16.000000) count=0.250000
+;	Raw cost for generated ic 9 : (0, 0.000000) count=0.250000
+;	genCall - reent:0 bigret:0 pcall:0
+;	  saveRegisters - must save -XY
+	txa
+	pha
+	tya
+	pha
+;	  genSend
+	ldx	*(_fib_sloc0_1_0+1)
+	lda	*_fib_sloc0_1_0
+	jsr	_fib
+;	assignResultValue - size:2
+	sta	*_fib_sloc0_1_0
+	stx	*(_fib_sloc0_1_0+1)
+	pla
+	tay
+	pla
+	tax
+;	Raw cost for generated ic 10 : (19, 40.000000) count=0.250000
+;	m6502_genMinus
+;	  genMinusDec - size=2  icount=2
+	tya
+	sec
+	sbc	#0x02
+	bcs	00115$
+	dex
+00115$:
+;	Raw cost for generated ic 11 : (7, 10.600000) count=0.250000
+;	Raw cost for generated ic 12 : (0, 0.000000) count=0.250000
+;	genCall - reent:0 bigret:0 pcall:0
+;	  genSend
+	jsr	_fib
+;	assignResultValue - size:2
+;	Raw cost for generated ic 13 : (3, 6.000000) count=0.250000
+;	m6502_genPlus
+	clc
+	adc	*_fib_sloc0_1_0
+	tay
+	txa
+	adc	*(_fib_sloc0_1_0+1)
+	tax
+;	Raw cost for generated ic 14 : (8, 14.000000) count=0.250000
+;	genLabel
+00104$:
+;	Raw cost for generated ic 16 : (0, 0.000000) count=1.000000
+;	genRet
+	tya
+;	Raw cost for generated ic 17 : (1, 2.000000) count=1.000000
+;	genLabel
+;	Raw cost for generated ic 18 : (0, 0.000000) count=1.000000
+;	genEndFunction
+	rts
+;	Raw cost for generated ic 19 : (1, 6.000000) count=1.000000
+;------------------------------------------------------------
+;Allocation info for local variables in function 'mul'
+;------------------------------------------------------------
+;sloc0         Allocated with name '_mul_sloc0_1_0'
+;a             Allocated with name '_mul_PARM_1'
+;b             Allocated with name '_mul_PARM_2'
+;------------------------------------------------------------
+;	test.c: 8: long mul(long a, long b) { return a * b; }
+;	genLabel
+;	Raw cost for generated ic 0 : (0, 0.000000) count=1.000000
+;	-----------------------------------------
+;	 function mul
+;	-----------------------------------------
+;	Register assignment is optimal.
+;	Stack space usage: 0 bytes.
+;	genFunction - rcv size = 0 big:0
+_mul:
+;	Raw cost for generated ic 1 : (0, 0.000000) count=1.000000
+;	genAssign
+;	m6502_copy
+	lda	(_mul_PARM_1+3)
+	sta	(__mullong_PARM_1+3)
+	lda	(_mul_PARM_1+2)
+	sta	(__mullong_PARM_1+2)
+	lda	(_mul_PARM_1+1)
+	sta	(__mullong_PARM_1+1)
+	lda	_mul_PARM_1
+	sta	__mullong_PARM_1
+;	Raw cost for generated ic 6 : (24, 32.000000) count=1.000000
+;	genAssign
+;	m6502_copy
+	lda	(_mul_PARM_2+3)
+	sta	(__mullong_PARM_2+3)
+	lda	(_mul_PARM_2+2)
+	sta	(__mullong_PARM_2+2)
+	lda	(_mul_PARM_2+1)
+	sta	(__mullong_PARM_2+1)
+	lda	_mul_PARM_2
+	sta	__mullong_PARM_2
+;	Raw cost for generated ic 7 : (24, 32.000000) count=1.000000
+;	genCall - reent:0 bigret:0 pcall:0
+	jsr	__mullong
+;	assignResultValue - size:4
+	sta	*_mul_sloc0_1_0
+	stx	*(_mul_sloc0_1_0+1)
+	lda	*___SDCC_m6502_ret2
+	sta	*(_mul_sloc0_1_0+2)
+	lda	*___SDCC_m6502_ret3
+	sta	*(_mul_sloc0_1_0+3)
+;	Raw cost for generated ic 8 : (15, 24.000000) count=1.000000
+;	genRet
+	sta	*___SDCC_m6502_ret3
+	lda	*(_mul_sloc0_1_0+2)
+	sta	*___SDCC_m6502_ret2
+	lda	*_mul_sloc0_1_0
+;	Raw cost for generated ic 3 : (8, 12.000000) count=1.000000
+;	genLabel
+;	Raw cost for generated ic 4 : (0, 0.000000) count=1.000000
+;	genEndFunction
+	rts
+;	Raw cost for generated ic 5 : (1, 6.000000) count=1.000000
+;------------------------------------------------------------
+;Allocation info for local variables in function 'main'
+;------------------------------------------------------------
+;sloc0         Allocated with name '_main_sloc0_1_0'
+;sloc1         Allocated with name '_main_sloc1_1_0'
+;sloc2         Allocated with name '_main_sloc2_1_0'
+;i             Allocated to registers 
+;------------------------------------------------------------
+;	test.c: 10: void main(void) {
+;	genLabel
+;	Raw cost for generated ic 0 : (0, 0.000000) count=1.000000
+;	-----------------------------------------
+;	 function main
+;	-----------------------------------------
+;	Register assignment is optimal.
+;	Stack space usage: 0 bytes.
+;	genFunction - rcv size = 0 big:0
+_main:
+;	Raw cost for generated ic 1 : (0, 0.000000) count=1.000000
+;	test.c: 12: memset(buf, 0, sizeof(buf));
+;	skipping iCode since result will be rematerialized
+;	Raw cost for generated ic 2 : (0, 0.000000) count=1.000000
+;	skipping iCode since result will be rematerialized
+;	Raw cost for generated ic 3 : (0, 0.000000) count=1.000000
+;	genAssign
+;	genAssignLit
+;	  genAssignLit - ra:0 rx:0
+	ldy	#0x00
+	sty	_memset_PARM_2
+	sty	(_memset_PARM_2+1)
+;	Raw cost for generated ic 5 : (8, 10.000000) count=1.000000
+;	genAssign
+;	genAssignLit
+;	  genAssignLit - ra:0 rx:0
+	ldx	#0x10
+	stx	_memset_PARM_3
+	sty	(_memset_PARM_3+1)
+;	Raw cost for generated ic 6 : (8, 10.000000) count=1.000000
+;	Raw cost for generated ic 4 : (0, 0.000000) count=1.000000
+;	genCall - reent:0 bigret:0 pcall:0
+;	  genSend
+	ldx	#>_buf
+	lda	#_buf
+	jsr	_memset
+;	Raw cost for generated ic 7 : (7, 10.000000) count=1.000000
+;	test.c: 13: for (i = 0; i < 16; i++) buf[i] = fib(i) + (unsigned char)mul(i, 3);
+;	genAssign
+;	m6502_copy
+	ldy	#0x00
+;	Raw cost for generated ic 36 : (2, 2.000000) count=1.000000
+;	genLabel
+00102$:
+;	Raw cost for generated ic 9 : (0, 0.000000) count=3.999999
+;	genAssign
+;	m6502_copy
+	sty	*_main_sloc0_1_0
+	lda	#0x00
+	sta	*(_main_sloc0_1_0+1)
+;	Raw cost for generated ic 11 : (6, 8.000000) count=3.999999
+;	genCast
+;	m6502_copy
+	tax
+;	Raw cost for generated ic 12 : (2, 4.000000) count=3.999999
+;	Raw cost for generated ic 13 : (0, 0.000000) count=3.999999
+;	genCall - reent:0 bigret:0 pcall:0
+;	  saveRegisters - must save --Y
+	tya
+	pha
+	lda	*(_main_sloc0_1_0+0)
+;	  genSend
+	jsr	_fib
+;	assignResultValue - size:2
+	sta	*(REGTEMP+0)
+	pla
+	tay
+	lda	*(REGTEMP+0)
+;	Raw cost for generated ic 14 : (13, 26.000000) count=3.999999
+;	genCast
+;	m6502_copy
+	sta	*_main_sloc1_1_0
+;	Raw cost for generated ic 15 : (2, 3.000000) count=3.999999
+;	genCast
+;	m6502_copy
+	sty	_mul_PARM_1
+	lda	#0x00
+	sta	(_mul_PARM_1+1)
+	sta	(_mul_PARM_1+2)
+	sta	(_mul_PARM_1+3)
+;	Raw cost for generated ic 16 : (14, 18.000000) count=3.999999
+;	genAssign
+;	genAssignLit
+;	  genAssignLit - ra:0 rx:0
+	ldx	#0x03
+	stx	_mul_PARM_2
+	sta	(_mul_PARM_2+1)
+	sta	(_mul_PARM_2+2)
+	sta	(_mul_PARM_2+3)
+;	Raw cost for generated ic 18 : (14, 18.000000) count=3.999999
+;	genCall - reent:0 bigret:0 pcall:0
+;	  saveRegisters - must save --Y
+	tya
+	pha
+	jsr	_mul
+;	assignResultValue - size:4
+	sta	*_main_sloc2_1_0
+	stx	*(_main_sloc2_1_0+1)
+	lda	*___SDCC_m6502_ret2
+	sta	*(_main_sloc2_1_0+2)
+	lda	*___SDCC_m6502_ret3
+	sta	*(_main_sloc2_1_0+3)
+	pla
+	tay
+;	Raw cost for generated ic 19 : (19, 35.000000) count=3.999999
+;	genCast
+;	m6502_copy
+	lda	*_main_sloc2_1_0
+;	Raw cost for generated ic 20 : (2, 3.000000) count=3.999999
+;	genCast
+;	m6502_copy
+;	Raw cost for generated ic 21 : (0, 0.000000) count=3.999999
+;	m6502_genPlus
+	clc
+	adc	*_main_sloc1_1_0
+;	Raw cost for generated ic 22 : (3, 5.000000) count=3.999999
+;	genPointerSet
+	sty	*(REGTEMP+0)
+;	  setupDPTR - off=0 remat=_buf savea=1
+	tax
+	clc
+	lda	*_main_sloc0_1_0
+	adc	#<(_buf+0)
+	sta	*(DPTR+0)
+	lda	*(_main_sloc0_1_0+1)
+	adc	#>(_buf+0)
+	sta	*(DPTR+1)
+	txa
+	ldy	#0x00
+	sta	[DPTR],y
+	ldy	*(REGTEMP+0)
+;	Raw cost for generated ic 23 : (23, 36.000000) count=3.999999
+;	m6502_genPlus
+;	  genPlusInc - size=1  icount=1
+	iny
+;	Raw cost for generated ic 26 : (1, 2.000000) count=3.999999
+;	genCmp (<, size:1, sign:0, ifx:1)
+	cpy	#0x10
+	bcc	00102$
+;	Raw cost for generated ic 28 : (7, 7.600000) count=3.999999
+;	skipping generated iCode
+;	Raw cost for generated ic 29 : (0, 0.000000) count=3.999999
+;	genLabel
+;	Raw cost for generated ic 32 : (0, 0.000000) count=1.000000
+;	test.c: 14: }
+;	genEndFunction
+	rts
+;	Raw cost for generated ic 33 : (1, 6.000000) count=1.000000
+	.area CODE
+	.area RODATA
+	.area XINIT
+	.area CABS    (ABS)

@@ -1,0 +1,158 @@
+;--------------------------------------------------------
+; File Created by SDCC : free open source ISO C Compiler
+; Version 4.6.3 #0 (UNIX)
+;--------------------------------------------------------
+	.module test_z80
+	
+	.optsdcc -mz80 sdcccall(1)
+;--------------------------------------------------------
+; Public variables in this module
+;--------------------------------------------------------
+	.globl _main
+	.globl _mul
+	.globl _fib
+	.globl _memset
+	.globl _buf
+;--------------------------------------------------------
+; special function registers
+;--------------------------------------------------------
+;--------------------------------------------------------
+; ram data
+;--------------------------------------------------------
+	.area _DATA
+_buf::
+	.ds 16
+;--------------------------------------------------------
+; ram data
+;--------------------------------------------------------
+	.area _INITIALIZED
+;--------------------------------------------------------
+; absolute ram data
+;--------------------------------------------------------
+	.area _DABS (ABS)
+	.area _DABS (ABS)
+;--------------------------------------------------------
+; global & static initialisations
+;--------------------------------------------------------
+	.area _HOME
+	.area _GSINIT
+	.area _GSFINAL
+	.area _GSINIT
+;--------------------------------------------------------
+; Home
+;--------------------------------------------------------
+	.area _HOME
+	.area _HOME
+;--------------------------------------------------------
+; code
+;--------------------------------------------------------
+	.area _CODE
+;test.c:6: int fib(int n) { return n < 2 ? n : fib(n-1) + fib(n-2); }
+;	---------------------------------
+; Function fib
+; ---------------------------------
+_fib::
+	ex	de, hl
+	ld	a, e
+	sub	a, #0x02
+	ld	a, d
+	rla
+	ccf
+	rra
+	sbc	a, #0x80
+	ret	c
+	ld	l, e
+	ld	h, d
+	dec	hl
+	push	de
+	call	_fib
+	ex	de, hl
+	pop	de
+	dec	de
+	dec	de
+	ex	de, hl
+	push	de
+	call	_fib
+	pop	hl
+	add	hl, de
+	ex	de, hl
+	ret
+;test.c:8: long mul(long a, long b) { return a * b; }
+;	---------------------------------
+; Function mul
+; ---------------------------------
+_mul::
+	ld	iy, #2
+	add	iy, sp
+	ld	c, 2 (iy)
+	ld	b, 3 (iy)
+	push	bc
+	ld	c, 0 (iy)
+	ld	b, 1 (iy)
+	push	bc
+	call	__mullong
+	pop	af
+	pop	af
+	ret
+;test.c:10: void main(void) {
+;	---------------------------------
+; Function main
+; ---------------------------------
+_main::
+	push	ix
+	ld	ix,	#0
+	add	ix, sp
+	push	af
+	dec	sp
+;test.c:12: memset(buf, 0, sizeof(buf));
+	ld	hl, #0x0010
+	push	hl
+	ld	de, #0x0000
+	ld	hl, #_buf
+	call	_memset
+;test.c:13: for (i = 0; i < 16; i++) buf[i] = fib(i) + (unsigned char)mul(i, 3);
+	ld	c, #0x00
+00102$:
+	ld	a, #<(_buf)
+	add	a, c
+	ld	-3 (ix), a
+	ld	a, #>(_buf)
+	adc	a, #0x00
+	ld	-2 (ix), a
+	ld	l, c
+	ld	h, #0x00
+	push	bc
+	call	_fib
+	pop	bc
+	ld	-1 (ix), e
+	ld	e, c
+	xor	a, a
+	ld	d, a
+	ld	b, a
+	push	bc
+	ld	hl, #0x0000
+	push	hl
+	ld	l, #0x03
+	push	hl
+	ld	l, a
+	ld	h, b
+	call	_mul
+	pop	af
+	pop	af
+	pop	bc
+	ld	a, e
+	add	a, -1 (ix)
+	pop	hl
+	push	hl
+	ld	(hl), a
+	inc	c
+	ld	a, c
+	sub	a, #0x10
+	jr	c, 00102$
+;test.c:14: }
+	ld	sp, ix
+	pop	ix
+	ret
+	.area _CODE
+	.area _INITIALIZER
+	.area _CABS (ABS)

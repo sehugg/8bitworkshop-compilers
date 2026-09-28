@@ -1,0 +1,111 @@
+--- a/src/SDCCmain.c
++++ b/src/SDCCmain.c
+@@ -1137,7 +1137,9 @@
+               if (options.use_stdout == 0)
+                 {
+                   options.use_stdout = 1;
++#ifndef __wasi__ /* WASI has no dup2() */
+                   dup2 (STDOUT_FILENO, STDERR_FILENO);
++#endif
+                 }
+               continue;
+             }
+@@ -2802,6 +2804,18 @@
+  * initialises and calls the parser
+  */
+ 
++#ifdef __wasi__
++/* WASI only calls the two-argument main(): pass environ as envp */
++extern char **environ;
++static int sdcc_main (int argc, char **argv, char **envp);
++int
++main (int argc, char **argv)
++{
++  return sdcc_main (argc, argv, environ);
++}
++#define main sdcc_main
++static
++#endif
+ int
+ main (int argc, char **argv, char **envp)
+ {
+@@ -2920,6 +2934,17 @@
+       unsigned L;
+       if (port->c_preamble && (L = strlen (port->c_preamble))!=0)
+         {
++#ifdef __wasi__
++          /* WASI has no pipe(), and the flex scanner read()s from
++             fileno(yyin), so fmemopen() won't do: use a scratch file */
++          static const char preamble_name[] = "sdcc-preamble.tmp";
++          yyin = fopen (preamble_name, "w+");
++          wassert (yyin);
++          fputs (port->c_preamble, yyin);
++          fflush (yyin);
++          rewind (yyin);
++          remove (preamble_name);
++#else
+           int p[2];
+           FILE *preamble;
+ #ifdef _WIN32
+@@ -2933,6 +2958,7 @@
+           fclose (preamble);
+           yyin = fdopen (p[0], "r");
+           wassert (yyin);
++#endif
+           yyparse ();
+           fclose (yyin);
+         }
+--- a/src/SDCCsystem.c
++++ b/src/SDCCsystem.c
+@@ -359,7 +359,13 @@
+   if (options.verboseExec)
+     printf ("+ %s\n", cmdLine);
+ 
++#ifdef __wasi__
++  /* WASI cannot spawn processes: run each tool separately (e.g. -S --c1mode) */
++  fprintf (stderr, "sdcc: cannot execute '%s': subprocesses are not supported on WASI\n", cmdLine);
++  e = -1;
++#else
+   e = system (cmdLine);
++#endif
+ 
+   if (options.verboseExec && e)
+     printf ("+ %s returned errorcode %d\n", cmdLine, e);
+@@ -381,6 +387,19 @@
+ {
+   return _pclose (fp);
+ }
++#elif defined(__wasi__)
++/* WASI cannot spawn processes: use --c1mode with preprocessed input */
++static FILE *
++sdcc_popen_read (const char *cmd)
++{
++  fprintf (stderr, "sdcc: cannot execute '%s': subprocesses are not supported on WASI (use --c1mode)\n", cmd);
++  return NULL;
++}
++int
++sdcc_pclose (FILE *fp)
++{
++  return -1;
++}
+ #else
+ #define sdcc_popen_read(cmd)  popen ((cmd), "r")
+ int
+--- a/src/SDCCasm.c
++++ b/src/SDCCasm.c
+@@ -342,6 +342,15 @@
+         }
+     }
+ 
++  if (!srcFile)
++    {
++      /* no # line directive seen (e.g. unpreprocessed --c1mode input):
++         fopen (NULL) is undefined, and aborts on WASI */
++      dbuf_printf (&line, "ERROR: no source file name");
++
++      return dbuf_detach_c_str (&line);
++    }
++
+   if (!inFile)
+     {
+       if (!(inFile = fopen (srcFile, "r")))

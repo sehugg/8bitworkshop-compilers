@@ -4,3 +4,6 @@ embuild/
 output/
 copy.cc65
 cc65.wasi
+copy.sdcc
+sdcc.native
+sdcc.wasi

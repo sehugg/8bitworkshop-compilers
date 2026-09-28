@@ -4,9 +4,9 @@
 [submodule "neslib"]
 	path = neslib
 	url = https://github.com/sehugg/neslib.git
-[submodule "sdcc-m6502"]
+[submodule "sdcc"]
 	path = sdcc
-	url = https://github.com/rurban/sdcc
+	url = https://git.code.sf.net/p/sdcc/git-mirror
 [submodule "6809tools"]
 	path = 6809tools
 	url = https://github.com/sehugg/6809tools
