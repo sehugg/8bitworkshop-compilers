@@ -115,6 +115,7 @@ cc65.wasi: copy.cc65 $(MAKEFILE_LIST)
 		CC="$(WASI_CC) $(WASI_CFLAGS)" \
 		AR="$(WASI_SDK)/bin/llvm-ar" \
 		USER_CFLAGS="-O2 -D_WASI_EMULATED_GETPID" \
+		LDFLAGS="-Wl,-z,stack-size=8388608" \
 		LDLIBS="-lwasi-emulated-getpid" \
 		EXE_SUFFIX=.wasm \
 		BUILD_ID="N/A"
@@ -154,9 +155,9 @@ $(BUILDDIR)/fs65-%/fsroot: cc65.wasi
 	c64)       c="cfg/c64*";          l="lib/c64*";        t="target/c64";; \
 	vic20)     c="cfg/vic20*";        l="lib/vic20*";      t="target/vic20";; \
 	apple2)    c="cfg/apple2*";       l="lib/apple2*";     t="target/apple2 target/apple2enh";; \
-	atari8)    c="cfg/atari.cfg cfg/atari-*.cfg cfg/atarixl*"; l="lib/atari.lib lib/atarixl.lib"; t="target/atari target/atarixl";; \
+	atari8)    c="cfg/atari.cfg cfg/atari-*.cfg cfg/atarixl* cfg/atari5200*"; l="lib/atari.lib lib/atarixl.lib lib/atari5200*"; t="target/atari target/atarixl target/atari5200";; \
 	atari2600) c="cfg/atari2600*";    l="lib/atari2600*";  t="";; \
-	none)      c="";                  l="lib/none.lib";    t="";; \
+	none)      c="cfg/none.cfg";      l="lib/none.lib";    t="";; \
 	esac; \
 	for f in $$c; do cp -rp $$f $@/share/cc65/cfg/; done; \
 	for f in $$l; do cp -rp $$f $@/share/cc65/lib/; done; \
