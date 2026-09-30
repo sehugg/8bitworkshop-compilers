@@ -26,16 +26,16 @@ BOOST_CANDIDATES = $(foreach d,$(shell brew --prefix boost 2>/dev/null) \
 	/opt/homebrew/opt/boost /usr/local/opt/boost /usr/local /usr,$(d)/include)
 BOOST_INCLUDE ?= $(firstword $(foreach d,$(BOOST_CANDIDATES),$(if $(wildcard $(d)/boost/version.hpp),$(d))) /usr/include)
 
-ALLTARGETS=cc65 6809tools yasm verilator zmac smlrc nesasm merlin32 c2t makewav fastbasic dasm Silice wiz cc2600 cc7800 nesfab
+ALLTARGETS=cc65 6809tools yasm verilator zmac xasm smlrc nesasm merlin32 c2t makewav fastbasic dasm Silice wiz cc2600 cc7800 nesfab
 #TODO: add sdcc when wasmtime upgraded and more browsers have exception support
 
 .PHONY: clean clobber prepare $(ALLTARGETS) test test.acme test.dasm test.yasm \
 	test.vasm test.zmac test.naken_asm test.c2t test.makewav test.merlin32 \
-	test.smlrc test.cc2600 test.cc7800 test.nesfab test.cc65 test.nesasm test.sdcc
+	test.smlrc test.cc2600 test.cc7800 test.nesfab test.cc65 test.nesasm test.sdcc test.xasm
 
 test: test.acme test.dasm test.yasm test.vasm test.zmac test.naken_asm \
 	test.c2t test.makewav test.merlin32 test.smlrc \
-	test.cc2600 test.cc7800 test.nesfab test.cc65 test.nesasm # test.sdcc
+	test.cc2600 test.cc7800 test.nesfab test.cc65 test.nesasm test.xasm # test.sdcc
 	@echo 'All tests passed.'
 
 all: $(ALLTARGETS)
@@ -325,6 +325,49 @@ zmac.wasi: copy.zmac
 
 zmac: zmac.wasi
 	cp $(BUILDDIR)/zmac/zmac.wasm $(WASMDIR)/zmac.wasm
+
+### xasm (WASI)
+# Baldwin-style ASxxxx 1.50 cross assemblers (6800/6801/6804/6805/6809/6811/
+# Z80/8085) + aslink + aslib. Not a submodule: the 1997 source tarball is
+# downloaded from the Internet Archive and checked against a pinned sha256.
+# Old K&R C; fixes are force-included
+# (-include xasm-wasi.h) instead of patching sources: libc's getline() and
+# link() clash with the tools' own, and machine()/outdp() are called via
+# implicit int but defined VOID (wasm-ld turns that mismatch into a trap).
+# setjmp needs wasm EH (see merlin32); the Makefiles ignore LDFLAGS/LDLIBS,
+# so -lsetjmp rides along in CC.
+
+XASM_ASMS = as6800 as6801 as6804 as6805 as6809 as6811 asz80 asi85
+XASM_TOOLS = $(XASM_ASMS) aslink aslib
+XASM_URL = https://web.archive.org/web/20221010235026/http://atjs.mbnet.fi/mc6809/Assembler/xasm.tar.gz
+XASM_SHA256 = 92d1d0b04f24b9fcd6f370b2e82dbb808c47c5fd4f8aed93ceaa436254be9770
+XASM_CC = $(WASI_CC) $(WASI_CFLAGS) -O2 -std=gnu89 -w \
+	-include $(BUILDDIR)/xasm/xasm-wasi.h \
+	-mllvm -wasm-enable-sjlj -mllvm -wasm-use-legacy-eh=false -lsetjmp
+
+$(BUILDDIR)/xasm.tar.gz:
+	mkdir -p $(BUILDDIR)
+	curl -fsSL -o $@.tmp '$(XASM_URL)'
+	echo '$(XASM_SHA256)  $@.tmp' | shasum -a 256 -c -
+	mv $@.tmp $@
+
+xasm.wasi: $(BUILDDIR)/xasm.tar.gz
+	rm -fr $(BUILDDIR)/xasm
+	tar xzf $(BUILDDIR)/xasm.tar.gz -C $(BUILDDIR)
+	printf '%s\n' '#include <stdio.h>' '#define getline xasm_getline' \
+		'#define link xasm_link' 'void machine();' 'void outdp();' \
+		> $(BUILDDIR)/xasm/xasm-wasi.h
+	cd $(BUILDDIR)/xasm/asm-src && PATH="$(WASI_SDK)/bin:$$PATH" \
+		make all CC="$(XASM_CC)" CFLAGS="-I../include"
+	cd $(BUILDDIR)/xasm/lnk-src && PATH="$(WASI_SDK)/bin:$$PATH" \
+		make aslink CC="$(XASM_CC)" CFLAGS=""
+	cd $(BUILDDIR)/xasm/library && PATH="$(WASI_SDK)/bin:$$PATH" \
+		make aslib CC="$(XASM_CC)" CFLAGS="-I../include"
+
+xasm: prepare xasm.wasi
+	for t in $(XASM_ASMS); do cp $(BUILDDIR)/xasm/asm-src/$$t $(WASMDIR)/$$t.wasm; done
+	cp $(BUILDDIR)/xasm/lnk-src/aslink $(WASMDIR)/aslink.wasm
+	cp $(BUILDDIR)/xasm/library/aslib $(WASMDIR)/aslib.wasm
 
 ### smlrc (WASI)
 # SmallerC core compiler; include/lib runtime data packaged as fs zip
@@ -664,6 +707,18 @@ test.zmac: zmac
 	cd $(BUILDDIR)/test-zmac && $(WASIRUN) --dir=. zmac.wasm test.z80
 	cmp tests/zmac/test.expected $(BUILDDIR)/test-zmac/zout/test.cim
 	@echo 'test.zmac OK'
+
+test.xasm: xasm
+	rm -fr $(BUILDDIR)/test-xasm && mkdir -p $(BUILDDIR)/test-xasm
+	cp $(WASMDIR)/as6809.wasm $(WASMDIR)/asz80.wasm $(WASMDIR)/aslink.wasm \
+		tests/xasm/*.asm $(BUILDDIR)/test-xasm/
+	cd $(BUILDDIR)/test-xasm && $(WASIRUN) --dir=. as6809.wasm -l -o t6809.rel t6809.asm
+	cd $(BUILDDIR)/test-xasm && $(WASIRUN) --dir=. aslink.wasm -o t6809 t6809.rel
+	cmp tests/xasm/t6809.expected $(BUILDDIR)/test-xasm/t6809.s19
+	cd $(BUILDDIR)/test-xasm && $(WASIRUN) --dir=. asz80.wasm -l -o tz80.rel tz80.asm
+	cd $(BUILDDIR)/test-xasm && $(WASIRUN) --dir=. aslink.wasm -o tz80 tz80.rel
+	cmp tests/xasm/tz80.expected $(BUILDDIR)/test-xasm/tz80.s19
+	@echo 'test.xasm OK'
 
 test.naken_asm: naken_asm
 	rm -fr $(BUILDDIR)/test-naken_asm && mkdir -p $(BUILDDIR)/test-naken_asm
