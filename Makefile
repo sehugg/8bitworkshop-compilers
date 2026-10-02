@@ -97,18 +97,20 @@ EMCC_FLAGS= -Os -s PURE_WASI=1-s FORCE_FILESYSTEM=1
 # modules); build all four so it never falls back to a system cc65.
 # copy.cc65 and cc65.wasi are real stamp files, so the extract/build below
 # only re-runs when the cc65 submodule HEAD (or this Makefile) changes.
-copy.cc65: prepare
+copy.cc65: prepare patches/cc65-apple2-lo-tgi.patch
 	@rev="$$(git -C cc65 rev-parse HEAD)"; \
 	if [ "$$rev" != "$$(cat $@ 2>/dev/null)" ] || [ ! -d $(BUILDDIR)/cc65/src ]; then \
 		echo "Copying cc65 ($$rev)"; \
 		rm -rf $(BUILDDIR)/cc65; mkdir -p $(BUILDDIR)/cc65; \
 		git -C cc65 archive HEAD | tar x -C $(BUILDDIR)/cc65; \
+		patch -d $(BUILDDIR)/cc65 -p1 < $(CURDIR)/patches/cc65-apple2-lo-tgi.patch; \
 		printf '%s\n' "$$rev" > $@; \
 	fi
 
 cc65.wasi: copy.cc65 $(MAKEFILE_LIST)
 	cd $(BUILDDIR)/cc65/src && make mostlyclean
-	cd $(BUILDDIR)/cc65/src && make -j 4 ar65 ca65 cc65 ld65
+	cd $(BUILDDIR)/cc65/src && make -j 4 ar65 ca65 cc65 ld65 BUILD_ID="$(CC65_BUILD_ID)"
+	cd $(BUILDDIR)/cc65/libsrc && make clean
 	cd $(BUILDDIR)/cc65/libsrc && PATH="$(BUILDDIR)/cc65/bin:$$PATH" make -j 4
 	cd $(BUILDDIR)/cc65/src && make mostlyclean
 	cd $(BUILDDIR)/cc65/src && PATH="$(WASI_SDK)/bin:$$PATH" \
@@ -119,11 +121,17 @@ cc65.wasi: copy.cc65 $(MAKEFILE_LIST)
 		LDFLAGS="-Wl,-z,stack-size=8388608" \
 		LDLIBS="-lwasi-emulated-getpid" \
 		EXE_SUFFIX=.wasm \
-		BUILD_ID="N/A"
+		BUILD_ID="$(CC65_BUILD_ID)"
 	@touch $@
-# NB: pin BUILD_ID. If left unset, cc65's Makefile runs git in the extracted
-# copy, which walks up to this repo's .git and embeds *our* HEAD hash - the
-# version banner then changes on every commit and breaks the goldens.
+# NB: pin BUILD_ID to the cc65 submodule commit. If left unset, cc65's
+# Makefile runs git in the extracted copy, which walks up to this repo's .git
+# and embeds *our* HEAD hash - the banner then changes on every commit, breaks
+# the goldens, and leaks into the prebuilt libs/ drivers in the fs zips.
+# Pinning to the cc65 revision is stable per submodule bump and self-identifies
+# the build. ("N/A" hid the revision; that's why the old binaries couldn't say
+# which cc65 they were.)
+CC65_REV := $(shell git -C $(CURDIR)/cc65 rev-parse --short HEAD 2>/dev/null)
+CC65_BUILD_ID := $(if $(CC65_REV),Git $(CC65_REV),N/A)
 
 # src/Makefile honors CC/AR/USER_CFLAGS/EXE_SUFFIX overrides; LLVM ar is
 # required (host ar corrupts wasm object archives). Compile-time data dirs
