@@ -26,8 +26,7 @@ BOOST_CANDIDATES = $(foreach d,$(shell brew --prefix boost 2>/dev/null) \
 	/opt/homebrew/opt/boost /usr/local/opt/boost /usr/local /usr,$(d)/include)
 BOOST_INCLUDE ?= $(firstword $(foreach d,$(BOOST_CANDIDATES),$(if $(wildcard $(d)/boost/version.hpp),$(d))) /usr/include)
 
-ALLTARGETS=cc65 6809tools yasm verilator zmac xasm smlrc nesasm merlin32 c2t makewav fastbasic dasm Silice wiz cc2600 cc7800 nesfab
-#TODO: add sdcc when wasmtime upgraded and more browsers have exception support
+ALLTARGETS=cc65 6809tools yasm verilator zmac xasm smlrc nesasm merlin32 c2t makewav fastbasic dasm Silice wiz cc2600 cc7800 nesfab sdcc
 
 .PHONY: clean clobber prepare $(ALLTARGETS) test test.acme test.dasm test.yasm \
 	test.vasm test.zmac test.naken_asm test.c2t test.makewav test.merlin32 \
@@ -35,7 +34,7 @@ ALLTARGETS=cc65 6809tools yasm verilator zmac xasm smlrc nesasm merlin32 c2t mak
 
 test: test.acme test.dasm test.yasm test.vasm test.zmac test.naken_asm \
 	test.c2t test.makewav test.merlin32 test.smlrc \
-	test.cc2600 test.cc7800 test.nesfab test.cc65 test.nesasm test.xasm # test.sdcc
+	test.cc2600 test.cc7800 test.nesfab test.cc65 test.nesasm test.xasm #test.sdcc
 	@echo 'All tests passed.'
 
 all: $(ALLTARGETS)
@@ -202,19 +201,24 @@ SDCC_WASI_CONFIG = --host=wasm32-wasi --build=$$(./config.guess) \
   --disable-device-lib --disable-packihx --disable-sdcpp \
   --disable-sdbinutils --without-ccache ac_cv_header_zlib_h=yes
 
-# C++ code throws (wasm EH), sdas uses setjmp (wasm sjlj). The EH feature
-# flag goes in CPPFLAGS too, since dependency generation runs cpp alone and
-# setjmp.h #errors without it. sdas Makefiles hardcode LIBS, so the extra
-# libraries go in LDFLAGS.
-SDCC_WASI_EH = -mexception-handling -mllvm -wasm-use-legacy-eh=false
+# sdas uses setjmp (wasm sjlj). The EH feature flag goes in CPPFLAGS too,
+# since dependency generation runs cpp alone and setjmp.h #errors without it.
+# sdas Makefiles hardcode LIBS, so the extra libraries go in LDFLAGS.
+# sdcc's C++ (Boost.Graph register allocator) never catches anything, so it is
+# built with -fno-exceptions and linked against wasi-sdk's non-EH libc++
+# (lib/wasm32-wasip1/noeh). That keeps sdcc.wasm free of exnref instructions,
+# which Node < 25 only accepts behind --experimental-wasm-exnref.
+# BOOST_NO_EXCEPTIONS needs boost::throw_exception defined: sdcc-noexc.a provides it.
+SDCC_WASI_EH = -mexception-handling -mllvm -wasm-use-legacy-eh=true
+SDCC_NOEXC_LIB = $(BUILDDIR)/sdcc-noexc.a
 SDCC_WASI_ENV = \
   CC="$(WASI_CC) $(WASI_CFLAGS)" CXX="$(WASI_CC)++ $(WASI_CFLAGS)" \
   AR=$(WASI_SDK)/bin/llvm-ar RANLIB=$(WASI_SDK)/bin/llvm-ranlib \
   STRIP=$(WASI_STRIP) \
   CPPFLAGS="-mexception-handling -D_GNU_SOURCE -D_WASI_EMULATED_GETPID -D_WASI_EMULATED_SIGNAL -D_WASI_EMULATED_PROCESS_CLOCKS -idirafter $(BOOST_INCLUDE)" \
   CFLAGS="-O2 -mllvm -wasm-enable-sjlj $(SDCC_WASI_EH)" \
-  CXXFLAGS="-O2 -fwasm-exceptions $(SDCC_WASI_EH)" \
-  LDFLAGS="-fwasm-exceptions -Wl,-z,stack-size=8388608 -lsetjmp -lunwind -lwasi-emulated-getpid -lwasi-emulated-signal -lwasi-emulated-process-clocks"
+  CXXFLAGS="-O2 -fno-exceptions -DBOOST_NO_EXCEPTIONS" \
+  LDFLAGS="$(SDCC_NOEXC_LIB) -Wl,-z,stack-size=8388608 -lsetjmp -lwasi-emulated-getpid -lwasi-emulated-signal -lwasi-emulated-process-clocks"
 
 # sdld picks its target from argv[0] (sdldz80, sdldgb, sdld6808 for 6502),
 # so it ships under each name.
@@ -242,7 +246,12 @@ sdcc.native: copy.sdcc
 	cp -rp $(BUILDDIR)/sdcc/device/lib/build/* $(BUILDDIR)/sdcc/fsroot/share/sdcc/lib/
 	touch $@
 
-sdcc.wasi: copy.sdcc patches/sdcc-wasi.patch $(MAKEFILE_LIST)
+$(SDCC_NOEXC_LIB): patches/sdcc-noexc.cc prepare
+	@mkdir -p $(BUILDDIR)
+	$(WASI_CC)++ $(WASI_CFLAGS) -O2 -fno-exceptions -DBOOST_NO_EXCEPTIONS -idirafter $(BOOST_INCLUDE) -c $< -o $(BUILDDIR)/sdcc-noexc.o
+	rm -f $@ && $(WASI_SDK)/bin/llvm-ar rc $@ $(BUILDDIR)/sdcc-noexc.o
+
+sdcc.wasi: copy.sdcc patches/sdcc-wasi.patch $(SDCC_NOEXC_LIB) $(MAKEFILE_LIST)
 	rm -rf $(BUILDDIR)/sdcc-wasi && mkdir -p $(BUILDDIR)/sdcc-wasi
 	git -C sdcc archive HEAD | tar x -C $(BUILDDIR)/sdcc-wasi
 	cd $(BUILDDIR)/sdcc-wasi && patch -p1 < $(CURDIR)/patches/sdcc-wasi.patch
